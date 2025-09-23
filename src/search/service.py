@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from src.engine.game import Game
 from src.engine.move import Move
+from src.eval import evaluate
 
 
 @dataclass
@@ -25,15 +26,49 @@ class SearchService:
     """
 
     def search(self, game: Game, depth: int = 1, movetime_ms: Optional[int] = None) -> SearchResult:
-        # Placeholder: return no-op result
-        moves = game.legal_moves()
-        best = moves[0] if moves else None
+        # Deterministic negamax alpha-beta with simple material evaluation.
+        board = game.board
+        nodes = 0
+
+        def negamax(d: int, alpha: int, beta: int, pv: List[Move]) -> Tuple[int, List[Move], int]:
+            nonlocal nodes
+            nodes += 1
+            if d == 0:
+                # Side to move perspective
+                base = evaluate(board)
+                score = base if board.side_to_move == "w" else -base
+                return score, [], nodes
+
+            legal = board.generate_legal_moves()
+            if not legal:
+                # No moves: treat as draw (0). Mate/stalemate detection omitted for simplicity.
+                return 0, [], nodes
+
+            best_score = -10_000_000
+            best_pv: List[Move] = []
+            for m in legal:
+                board.make_move(m)
+                child_pv: List[Move] = []
+                score, child_pv, _ = negamax(d - 1, -beta, -alpha, child_pv)
+                score = -score
+                board.unmake_move(m)
+                if score > best_score:
+                    best_score = score
+                    best_pv = [m] + child_pv
+                if score > alpha:
+                    alpha = score
+                if alpha >= beta:
+                    break
+            return best_score, best_pv, nodes
+
+        score, pv, nodes = negamax(depth, -10_000_000, 10_000_000, [])
+        best_move = pv[0] if pv else (game.legal_moves()[0] if game.legal_moves() else None)
         return SearchResult(
-            best_move=best,
-            score_cp=None,
+            best_move=best_move,
+            score_cp=score,
             mate_in=None,
-            pv=[best] if best else [],
-            nodes=0,
+            pv=pv,
+            nodes=nodes,
             depth=depth,
             time_ms=0,
         )

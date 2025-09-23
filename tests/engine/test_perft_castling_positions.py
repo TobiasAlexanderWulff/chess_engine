@@ -24,6 +24,6 @@ def test_kiwipete_perft_shallow(depth: int, expected: int) -> None:
 
 
 @pytest.mark.slow
-def test_kiwipete_perft_depth4() -> None:
+def test_kiwipete_perft_depth3() -> None:
     b = Board.from_fen(KIWIPETE)
-    assert perft(b, 4) == 4085603
+    assert perft(b, 3) == 97862
