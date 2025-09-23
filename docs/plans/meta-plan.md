@@ -42,10 +42,18 @@
 - Performance: nodes/s, best-move depth vs. time; Elo vs. baseline (later, Plan 7).
 
 ## Dependencies
-- Plan 4 depends on Plan 3 (legal move generation).
-- Plan 5 depends on Plan 1 (API contract) and Plan 2/3 (state + moves).
-- Plan 7 builds on Plans 3–6; Plan 8 is orthogonal to HTTP and can be done after Plan 5.
+- Plan 1 is foundational for external contracts (OpenAPI, repo skeleton).
+- Plan 2 provides `Board` and FEN I/O used by Plans 3–5.
+- Plan 3 provides legal move generation required by Plans 4, 5, and 7.
+- Plan 4 depends on Plan 3 (legal moves) and Plan 2 (state representation).
+- Plan 5 depends on Plan 1 (API contract), Plan 2 (FEN/state), and Plan 3 (moves).
+- Plan 6 integrates tooling/tests for Plans 2–5 and prepares metrics for Plan 7.
+- Plan 7 builds on Plans 3–6; Plan 8 is orthogonal to HTTP and can start after Plan 5.
+
+## Conflicts & Interactions
+- Unified control plane for search: both HTTP and UCI must route `go`, `stop`, and cancellation through a single search controller to avoid race conditions.
+- Cancellation semantics: define cooperative cancellation points (node loop, quiescence entry) and ensure `stop` results in a best-known move and stats.
+- Concurrency: serialize session-bound searches; document behavior when concurrent HTTP and UCI commands target the same game/session.
 
 ## Next Step
 - Execute Plan 1 to lock API schemas and scaffold the repository layout.
-
