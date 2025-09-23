@@ -173,12 +173,12 @@ class Board:
         return None
 
     def generate_legal_moves(self) -> List[Move]:
-        """Return pseudo-legal moves (Phase 1: pawns only).
+        """Return pseudo-legal moves (pawns, knights, king) with basic legality.
 
-        Scaffolding for Plan 3: generate pawn pushes (single/double) and
-        captures for the side to move. Does not yet filter for king safety,
-        promotions, en passant, or other piece types. Promotions will be
-        added in a later slice.
+        Scaffolding for Plan 3: generate pawn pushes (single/double, promotions),
+        pawn captures (promotions), knights, and king moves. Applies basic
+        in-check filtering by rejecting moves that leave own king attacked.
+        En passant, castling, and sliders are not implemented yet.
         """
         moves: List[Move] = []
         PROMOS = ("q", "r", "b", "n")
@@ -261,6 +261,29 @@ class Board:
                         if not ((occ_white >> to_sq) & 1):
                             moves.append(Move(from_sq, to_sq))
                 knights ^= lsb
+            # King moves: avoid moving into opponent attacks
+            king_bb = self.bb[WK]
+            if king_bb:
+                from_sq = (king_bb & -king_bb).bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, -1),
+                    (0, -1),
+                    (1, -1),
+                    (-1, 0),
+                    (1, 0),
+                    (-1, 1),
+                    (0, 1),
+                    (1, 1),
+                ):
+                    tf = f + df
+                    tr = r + dr
+                    if 0 <= tf < 8 and 0 <= tr < 8:
+                        to_sq = tr * 8 + tf
+                        if not ((occ_white >> to_sq) & 1):
+                            if not self._is_attacked(to_sq, by_white=False):
+                                moves.append(Move(from_sq, to_sq))
         else:
             pawns = self.bb[BP]
             while pawns:
@@ -328,8 +351,52 @@ class Board:
                         if not ((occ_black >> to_sq) & 1):
                             moves.append(Move(from_sq, to_sq))
                 knights ^= lsb
+            # King moves: avoid moving into opponent attacks
+            king_bb = self.bb[BK]
+            if king_bb:
+                from_sq = (king_bb & -king_bb).bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, -1),
+                    (0, -1),
+                    (1, -1),
+                    (-1, 0),
+                    (1, 0),
+                    (-1, 1),
+                    (0, 1),
+                    (1, 1),
+                ):
+                    tf = f + df
+                    tr = r + dr
+                    if 0 <= tf < 8 and 0 <= tr < 8:
+                        to_sq = tr * 8 + tf
+                        if not ((occ_black >> to_sq) & 1):
+                            if not self._is_attacked(to_sq, by_white=True):
+                                moves.append(Move(from_sq, to_sq))
 
-        return moves
+        # Filter out moves that leave own king in check.
+        legal: List[Move] = []
+        for mv in moves:
+            new_bb = self._apply_pseudo_to_bb(mv)
+            if new_bb is None:
+                continue
+            if self.side_to_move == "w":
+                king_bb = new_bb[WK]
+                if king_bb == 0:
+                    continue
+                king_sq = (king_bb & -king_bb).bit_length() - 1
+                if not self._is_attacked(king_sq, by_white=False, bb=new_bb):
+                    legal.append(mv)
+            else:
+                king_bb = new_bb[BK]
+                if king_bb == 0:
+                    continue
+                king_sq = (king_bb & -king_bb).bit_length() - 1
+                if not self._is_attacked(king_sq, by_white=True, bb=new_bb):
+                    legal.append(mv)
+
+        return legal
 
     def apply(self, move: Move) -> "Board":
         # To be implemented in Plan 3
@@ -354,3 +421,171 @@ class Board:
         - hash and any incremental caches
         """
         raise NotImplementedError("unmake_move not implemented yet")
+
+    # --- Attack and simulation helpers (scaffolding) ---
+    def _is_attacked(self, sq: int, *, by_white: bool, bb: Optional[List[int]] = None) -> bool:
+        """Return True if square `sq` is attacked by given side on board `bb`.
+
+        Covers: pawns, knights, king, and slider rays for bishops/rooks/queens.
+        """
+        if bb is None:
+            bb = self.bb
+
+        # Pawn attacks
+        f = sq % 8
+        r = sq // 8
+        if by_white:
+            # White pawns attack +7 and +9
+            if f > 0:
+                o = sq - 9
+                if o >= 0 and ((bb[WP] >> o) & 1):
+                    return True
+            if f < 7:
+                o = sq - 7
+                if o >= 0 and ((bb[WP] >> o) & 1):
+                    return True
+        else:
+            # Black pawns attack -7 and -9 relative to white's perspective
+            if f < 7:
+                o = sq + 9
+                if o <= 63 and ((bb[BP] >> o) & 1):
+                    return True
+            if f > 0:
+                o = sq + 7
+                if o <= 63 and ((bb[BP] >> o) & 1):
+                    return True
+
+        # Knight attacks
+        for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
+            tf = f + df
+            tr = r + dr
+            if 0 <= tf < 8 and 0 <= tr < 8:
+                o = tr * 8 + tf
+                if by_white:
+                    if (bb[WN] >> o) & 1:
+                        return True
+                else:
+                    if (bb[BN] >> o) & 1:
+                        return True
+
+        # King attacks
+        for df, dr in ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)):
+            tf = f + df
+            tr = r + dr
+            if 0 <= tf < 8 and 0 <= tr < 8:
+                o = tr * 8 + tf
+                if by_white:
+                    if (bb[WK] >> o) & 1:
+                        return True
+                else:
+                    if (bb[BK] >> o) & 1:
+                        return True
+
+        # Slider attacks (bishop/rook/queen)
+        occ = 0
+        for b in bb:
+            occ |= b
+
+        # Bishop-like directions
+        for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+            tf, tr = f, r
+            while True:
+                tf += df
+                tr += dr
+                if not (0 <= tf < 8 and 0 <= tr < 8):
+                    break
+                o = tr * 8 + tf
+                if (occ >> o) & 1:
+                    if by_white:
+                        if ((bb[WB] >> o) & 1) or ((bb[WQ] >> o) & 1):
+                            return True
+                    else:
+                        if ((bb[BB] >> o) & 1) or ((bb[BQ] >> o) & 1):
+                            return True
+                    break
+
+        # Rook-like directions
+        for df, dr in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            tf, tr = f, r
+            while True:
+                tf += df
+                tr += dr
+                if not (0 <= tf < 8 and 0 <= tr < 8):
+                    break
+                o = tr * 8 + tf
+                if (occ >> o) & 1:
+                    if by_white:
+                        if ((bb[WR] >> o) & 1) or ((bb[WQ] >> o) & 1):
+                            return True
+                    else:
+                        if ((bb[BR] >> o) & 1) or ((bb[BQ] >> o) & 1):
+                            return True
+                    break
+
+        return False
+
+    def _apply_pseudo_to_bb(self, move: Move) -> Optional[List[int]]:
+        """Apply a simple move to a copy of bitboards; return new bitboards.
+
+        Supports: pawns (incl. promotions, no en passant), knights, king.
+        """
+        from_sq, to_sq = move.from_sq, move.to_sq
+        is_white = self.side_to_move == "w"
+        bb = list(self.bb)
+
+        # Remove destination piece if any (capture)
+        mask_to = ~(1 << to_sq)
+        if is_white:
+            bb[BP] &= mask_to
+            bb[BN] &= mask_to
+            bb[BB] &= mask_to
+            bb[BR] &= mask_to
+            bb[BQ] &= mask_to
+            bb[BK] &= mask_to
+        else:
+            bb[WP] &= mask_to
+            bb[WN] &= mask_to
+            bb[WB] &= mask_to
+            bb[WR] &= mask_to
+            bb[WQ] &= mask_to
+            bb[WK] &= mask_to
+
+        moved = False
+        if is_white:
+            if (bb[WP] >> from_sq) & 1:
+                bb[WP] &= ~(1 << from_sq)
+                if move.promotion:
+                    promo_map = {"q": WQ, "r": WR, "b": WB, "n": WN}
+                    bb[promo_map[move.promotion]] |= 1 << to_sq
+                else:
+                    bb[WP] |= 1 << to_sq
+                moved = True
+            elif (bb[WN] >> from_sq) & 1:
+                bb[WN] &= ~(1 << from_sq)
+                bb[WN] |= 1 << to_sq
+                moved = True
+            elif (bb[WK] >> from_sq) & 1:
+                bb[WK] &= ~(1 << from_sq)
+                bb[WK] |= 1 << to_sq
+                moved = True
+        else:
+            if (bb[BP] >> from_sq) & 1:
+                bb[BP] &= ~(1 << from_sq)
+                if move.promotion:
+                    promo_map = {"q": BQ, "r": BR, "b": BB, "n": BN}
+                    bb[promo_map[move.promotion]] |= 1 << to_sq
+                else:
+                    bb[BP] |= 1 << to_sq
+                moved = True
+            elif (bb[BN] >> from_sq) & 1:
+                bb[BN] &= ~(1 << from_sq)
+                bb[BN] |= 1 << to_sq
+                moved = True
+            elif (bb[BK] >> from_sq) & 1:
+                bb[BK] &= ~(1 << from_sq)
+                bb[BK] |= 1 << to_sq
+                moved = True
+
+        if not moved:
+            return None
+        return bb

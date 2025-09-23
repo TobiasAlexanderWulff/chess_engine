@@ -34,8 +34,9 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
     """Return a new Board with a simple move applied (scaffolding).
 
     Supports:
-    - Pawn pushes and captures (no promotions/EP)
+    - Pawn pushes and captures (promotions supported; no EP)
     - Knight moves and captures
+    - King moves and captures
     Updates: bb, side_to_move, ep_square (for pawn double pushes), half/fullmove.
     Leaves castling rights unchanged. Returns None for unsupported cases.
     """
@@ -92,6 +93,17 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
                 bb[BQ] &= mask
                 bb[BK] &= mask
             bb[WN] |= 1 << to_sq
+        elif bb[WK] & (1 << from_sq):
+            bb[WK] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[BP] &= mask
+                bb[BN] &= mask
+                bb[BB] &= mask
+                bb[BR] &= mask
+                bb[BQ] &= mask
+                bb[BK] &= mask
+            bb[WK] |= 1 << to_sq
         else:
             return None
     else:
@@ -127,6 +139,17 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
                 bb[WQ] &= mask
                 bb[WK] &= mask
             bb[BN] |= 1 << to_sq
+        elif bb[BK] & (1 << from_sq):
+            bb[BK] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[WP] &= mask
+                bb[WN] &= mask
+                bb[WB] &= mask
+                bb[WR] &= mask
+                bb[WQ] &= mask
+                bb[WK] &= mask
+            bb[BK] |= 1 << to_sq
         else:
             return None
 
