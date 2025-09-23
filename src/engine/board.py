@@ -224,6 +224,30 @@ class Board:
                         moves.append(Move(from_sq, cap))
 
                 pawns ^= lsb
+            # Knights (no legality filtering yet)
+            knights = self.bb[WN]
+            while knights:
+                lsb = knights & -knights
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, 2),
+                    (1, 2),
+                    (-2, 1),
+                    (2, 1),
+                    (-2, -1),
+                    (2, -1),
+                    (-1, -2),
+                    (1, -2),
+                ):
+                    tf = f + df
+                    tr = r + dr
+                    if 0 <= tf < 8 and 0 <= tr < 8:
+                        to_sq = tr * 8 + tf
+                        if not ((occ_white >> to_sq) & 1):
+                            moves.append(Move(from_sq, to_sq))
+                knights ^= lsb
         else:
             pawns = self.bb[BP]
             while pawns:
@@ -255,6 +279,30 @@ class Board:
                         moves.append(Move(from_sq, cap))
 
                 pawns ^= lsb
+            # Knights (no legality filtering yet)
+            knights = self.bb[BN]
+            while knights:
+                lsb = knights & -knights
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, 2),
+                    (1, 2),
+                    (-2, 1),
+                    (2, 1),
+                    (-2, -1),
+                    (2, -1),
+                    (-1, -2),
+                    (1, -2),
+                ):
+                    tf = f + df
+                    tr = r + dr
+                    if 0 <= tf < 8 and 0 <= tr < 8:
+                        to_sq = tr * 8 + tf
+                        if not ((occ_black >> to_sq) & 1):
+                            moves.append(Move(from_sq, to_sq))
+                knights ^= lsb
 
         return moves
 

@@ -22,7 +22,7 @@ def perft(board: Board, depth: int) -> int:
 
     nodes = 0
     for m in board.generate_legal_moves():
-        child = _apply_pseudo_pawn_move(board, m)
+        child = _apply_pseudo_move(board, m)
         if child is None:
             # Unsupported move type in scaffolding; skip for now.
             continue
@@ -30,24 +30,17 @@ def perft(board: Board, depth: int) -> int:
     return nodes
 
 
-def _apply_pseudo_pawn_move(board: Board, move: Move) -> Board | None:
-    """Return a new Board with the pawn move applied (scaffolding).
+def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
+    """Return a new Board with a simple move applied (scaffolding).
 
-    Supports only pawn pushes and captures without promotions or en passant.
-    Updates: bb, side_to_move, ep_square (for double pushes), half/fullmove.
+    Supports:
+    - Pawn pushes and captures (no promotions/EP)
+    - Knight moves and captures
+    Updates: bb, side_to_move, ep_square (for pawn double pushes), half/fullmove.
     Leaves castling rights unchanged. Returns None for unsupported cases.
     """
     from_sq, to_sq = move.from_sq, move.to_sq
-    # Identify moving side: pawn must belong to side_to_move
     is_white = board.side_to_move == "w"
-    wpawn = 1 << from_sq
-    bpawn = 1 << from_sq
-    if is_white:
-        if not (board.bb[WP] & wpawn):
-            return None
-    else:
-        if not (board.bb[BP] & bpawn):
-            return None
 
     # Clone board minimal state
     bb = list(board.bb)
@@ -58,49 +51,75 @@ def _apply_pseudo_pawn_move(board: Board, move: Move) -> Board | None:
     for b in bb:
         occ_all |= b
 
-    # Determine if capture
+    # Determine if capture based on pre-move occupancy
     is_capture = (occ_all >> to_sq) & 1 == 1
 
-    # Apply move to bitboards
+    moved_is_pawn = False
+
     if is_white:
-        # Remove pawn from from_sq
-        bb[WP] &= ~(1 << from_sq)
-        # If capture, remove black piece at to_sq (any type)
-        if is_capture:
-            mask = ~(1 << to_sq)
-            bb[BP] &= mask
-            bb[BN] &= mask
-            bb[BB] &= mask
-            bb[BR] &= mask
-            bb[BQ] &= mask
-            bb[BK] &= mask
-        # Place pawn at to_sq
-        bb[WP] |= 1 << to_sq
-
-        # Set EP square for double push (from rank 2 to 4)
-        if move.to_sq - move.from_sq == 16:
-            ep_square = move.from_sq + 8
+        if bb[WP] & (1 << from_sq):
+            moved_is_pawn = True
+            # Remove pawn and place at destination
+            bb[WP] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[BP] &= mask
+                bb[BN] &= mask
+                bb[BB] &= mask
+                bb[BR] &= mask
+                bb[BQ] &= mask
+                bb[BK] &= mask
+            bb[WP] |= 1 << to_sq
+            # EP target on double push
+            if to_sq - from_sq == 16:
+                ep_square = from_sq + 8
+        elif bb[WN] & (1 << from_sq):
+            bb[WN] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[BP] &= mask
+                bb[BN] &= mask
+                bb[BB] &= mask
+                bb[BR] &= mask
+                bb[BQ] &= mask
+                bb[BK] &= mask
+            bb[WN] |= 1 << to_sq
+        else:
+            return None
     else:
-        # Remove pawn from from_sq
-        bb[BP] &= ~(1 << from_sq)
-        # If capture, remove white piece at to_sq (any type)
-        if is_capture:
-            mask = ~(1 << to_sq)
-            bb[WP] &= mask
-            bb[WN] &= mask
-            bb[WB] &= mask
-            bb[WR] &= mask
-            bb[WQ] &= mask
-            bb[WK] &= mask
-        # Place pawn at to_sq
-        bb[BP] |= 1 << to_sq
+        if bb[BP] & (1 << from_sq):
+            moved_is_pawn = True
+            bb[BP] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[WP] &= mask
+                bb[WN] &= mask
+                bb[WB] &= mask
+                bb[WR] &= mask
+                bb[WQ] &= mask
+                bb[WK] &= mask
+            bb[BP] |= 1 << to_sq
+            if from_sq - to_sq == 16:
+                ep_square = from_sq - 8
+        elif bb[BN] & (1 << from_sq):
+            bb[BN] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[WP] &= mask
+                bb[WN] &= mask
+                bb[WB] &= mask
+                bb[WR] &= mask
+                bb[WQ] &= mask
+                bb[WK] &= mask
+            bb[BN] |= 1 << to_sq
+        else:
+            return None
 
-        # Set EP square for double push (from rank 7 to 5)
-        if move.from_sq - move.to_sq == 16:
-            ep_square = move.from_sq - 8
-
-    # Halfmove clock: reset on pawn move or capture, else +1 (we reset)
-    halfmove_clock = 0
+    # Halfmove clock: reset on pawn move or capture; else increment
+    if moved_is_pawn or is_capture:
+        halfmove_clock = 0
+    else:
+        halfmove_clock = board.halfmove_clock + 1
     # Fullmove number: increment after black moves
     fullmove_number = board.fullmove_number + (1 if board.side_to_move == "b" else 0)
 
