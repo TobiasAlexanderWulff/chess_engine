@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import List, Optional, Tuple
 
 from .move import Move, square_to_str, str_to_square
 
@@ -53,6 +53,8 @@ class Board:
     ep_square: Optional[int]  # square index or None
     halfmove_clock: int
     fullmove_number: int
+    # internal move history for make/unmake (Plan 3)
+    _history: List[Tuple] = field(default_factory=list, repr=False)
 
     @classmethod
     def startpos(cls) -> "Board":
@@ -573,14 +575,106 @@ class Board:
 
     # --- Plan 3 scaffolding ---
     def make_move(self, move: Move) -> None:
-        """Apply `move` to this board in-place.
+        """Apply `move` to this board in-place with reversible state.
 
-        Scaffolding stub for Plan 3. To be implemented with full rules:
-        - normal moves, captures, promotions, castling, en passant
-        - update halfmove/fullmove counters, castling rights, ep square
-        - maintain Zobrist hash incrementally (once stored on Board or via external state)
+        Supports: normal moves, captures, promotions, and en passant.
+        Castling moves are not generated yet and thus not handled here.
         """
-        raise NotImplementedError("make_move not implemented yet")
+        from_sq, to_sq = move.from_sq, move.to_sq
+        is_white = self.side_to_move == "w"
+
+        # Determine moved piece type
+        moved_piece = None
+        own_indices = (WP, WN, WB, WR, WQ, WK) if is_white else (BP, BN, BB, BR, BQ, BK)
+        for p in own_indices:
+            if (self.bb[p] >> from_sq) & 1:
+                moved_piece = p
+                break
+        if moved_piece is None:
+            raise ValueError("no piece to move from from_sq")
+
+        # Determine capture (including en passant)
+        captured_piece = None
+        ep_capture_sq: Optional[int] = None
+        if moved_piece in (WP, BP) and self.ep_square is not None and to_sq == self.ep_square:
+            # en passant
+            if is_white and (to_sq - from_sq) in (7, 9):
+                ep_capture_sq = to_sq - 8
+                captured_piece = BP
+            elif (not is_white) and (from_sq - to_sq) in (7, 9):
+                ep_capture_sq = to_sq + 8
+                captured_piece = WP
+        else:
+            # normal capture: detect which opponent piece is on to_sq
+            opp_indices = (BP, BN, BB, BR, BQ, BK) if is_white else (WP, WN, WB, WR, WQ, WK)
+            for p in opp_indices:
+                if (self.bb[p] >> to_sq) & 1:
+                    captured_piece = p
+                    break
+
+        # Save previous state for unmake
+        prev_state = (
+            move,
+            moved_piece,
+            captured_piece,
+            ep_capture_sq,
+            self.ep_square,
+            self.castling,
+            self.halfmove_clock,
+            self.fullmove_number,
+        )
+        self._history.append(prev_state)
+
+        # Update halfmove clock
+        if moved_piece in (WP, BP) or captured_piece is not None:
+            self.halfmove_clock = 0
+        else:
+            self.halfmove_clock += 1
+
+        # Update fullmove number after black moves
+        if not is_white:
+            self.fullmove_number += 1
+
+        # Update castling rights if king or rook moves/captured
+        self._update_castling_rights_on_move(moved_piece, from_sq, to_sq, captured_piece)
+
+        # Clear en passant by default; set only on double pawn pushes
+        self.ep_square = None
+
+        # Bitboard updates: move piece, handle captures and promotion/en passant
+        # Clear from square on moved piece
+        self.bb[moved_piece] &= ~(1 << from_sq)
+
+        # Remove captured piece
+        if captured_piece is not None:
+            if ep_capture_sq is not None:
+                self.bb[captured_piece] &= ~(1 << ep_capture_sq)
+            else:
+                self.bb[captured_piece] &= ~(1 << to_sq)
+
+        # Place moved piece (or promoted piece)
+        if moved_piece == WP:
+            if move.promotion:
+                promo_map = {"q": WQ, "r": WR, "b": WB, "n": WN}
+                self.bb[promo_map[move.promotion]] |= 1 << to_sq
+            else:
+                self.bb[WP] |= 1 << to_sq
+                # Double push sets ep target
+                if to_sq - from_sq == 16:
+                    self.ep_square = from_sq + 8
+        elif moved_piece == BP:
+            if move.promotion:
+                promo_map = {"q": BQ, "r": BR, "b": BB, "n": BN}
+                self.bb[promo_map[move.promotion]] |= 1 << to_sq
+            else:
+                self.bb[BP] |= 1 << to_sq
+                if from_sq - to_sq == 16:
+                    self.ep_square = from_sq - 8
+        else:
+            self.bb[moved_piece] |= 1 << to_sq
+
+        # Toggle side to move
+        self.side_to_move = "b" if is_white else "w"
 
     def unmake_move(self, move: Move) -> None:
         """Undo the last move in-place, restoring previous state.
@@ -589,7 +683,94 @@ class Board:
         - moved/captured/promoted pieces, castling rights, ep square, counters
         - hash and any incremental caches
         """
-        raise NotImplementedError("unmake_move not implemented yet")
+        if not self._history:
+            raise ValueError("no move to unmake")
+        (
+            _mv,
+            moved_piece,
+            captured_piece,
+            ep_capture_sq,
+            prev_ep,
+            prev_castling,
+            prev_halfmove,
+            prev_fullmove,
+        ) = self._history.pop()
+
+        from_sq, to_sq = move.from_sq, move.to_sq
+
+        # Toggle side back
+        self.side_to_move = "w" if self.side_to_move == "b" else "b"
+
+        # Restore counters and rights
+        self.ep_square = prev_ep
+        self.castling = prev_castling
+        self.halfmove_clock = prev_halfmove
+        self.fullmove_number = prev_fullmove
+
+        # Undo piece placement
+        # Remove piece from destination (or promoted piece) and place back on from_sq
+        if moved_piece == WP:
+            if move.promotion:
+                promo_map = {"q": WQ, "r": WR, "b": WB, "n": WN}
+                self.bb[promo_map[move.promotion]] &= ~(1 << to_sq)
+                self.bb[WP] |= 1 << from_sq
+            else:
+                self.bb[WP] &= ~(1 << to_sq)
+                self.bb[WP] |= 1 << from_sq
+        elif moved_piece == BP:
+            if move.promotion:
+                promo_map = {"q": BQ, "r": BR, "b": BB, "n": BN}
+                self.bb[promo_map[move.promotion]] &= ~(1 << to_sq)
+                self.bb[BP] |= 1 << from_sq
+            else:
+                self.bb[BP] &= ~(1 << to_sq)
+                self.bb[BP] |= 1 << from_sq
+        else:
+            self.bb[moved_piece] &= ~(1 << to_sq)
+            self.bb[moved_piece] |= 1 << from_sq
+
+        # Restore captured piece
+        if captured_piece is not None:
+            if ep_capture_sq is not None:
+                self.bb[captured_piece] |= 1 << ep_capture_sq
+            else:
+                self.bb[captured_piece] |= 1 << to_sq
+
+    def _update_castling_rights_on_move(
+        self, moved_piece: int, from_sq: int, to_sq: int, captured_piece: Optional[int]
+    ) -> None:
+        """Update castling string based on king/rook moves and rook captures."""
+        rights = set(self.castling)
+        # White king/rook moves
+        if moved_piece == WK:
+            rights.discard("K")
+            rights.discard("Q")
+        elif moved_piece == WR:
+            if from_sq == 0:
+                rights.discard("Q")
+            elif from_sq == 7:
+                rights.discard("K")
+        # Black king/rook moves
+        if moved_piece == BK:
+            rights.discard("k")
+            rights.discard("q")
+        elif moved_piece == BR:
+            if from_sq == 56:
+                rights.discard("q")
+            elif from_sq == 63:
+                rights.discard("k")
+        # Rook captured on original squares
+        if captured_piece == WR and to_sq in (0, 7):
+            if to_sq == 0:
+                rights.discard("Q")
+            else:
+                rights.discard("K")
+        if captured_piece == BR and to_sq in (56, 63):
+            if to_sq == 56:
+                rights.discard("q")
+            else:
+                rights.discard("k")
+        self.castling = "".join(c for c in "KQkq" if c in rights)
 
     # --- Attack and simulation helpers (scaffolding) ---
     def _is_attacked(self, sq: int, *, by_white: bool, bb: Optional[List[int]] = None) -> bool:
