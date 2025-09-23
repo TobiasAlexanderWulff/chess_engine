@@ -173,8 +173,90 @@ class Board:
         return None
 
     def generate_legal_moves(self) -> List[Move]:
-        # To be implemented in Plan 3
-        return []
+        """Return pseudo-legal moves (Phase 1: pawns only).
+
+        Scaffolding for Plan 3: generate pawn pushes (single/double) and
+        captures for the side to move. Does not yet filter for king safety,
+        promotions, en passant, or other piece types. Promotions will be
+        added in a later slice.
+        """
+        moves: List[Move] = []
+
+        # Occupancy helpers
+        occ_all = 0
+        for bb in self.bb:
+            occ_all |= bb
+        occ_white = (
+            self.bb[WP] | self.bb[WN] | self.bb[WB] | self.bb[WR] | self.bb[WQ] | self.bb[WK]
+        )
+        occ_black = (
+            self.bb[BP] | self.bb[BN] | self.bb[BB] | self.bb[BR] | self.bb[BQ] | self.bb[BK]
+        )
+
+        if self.side_to_move == "w":
+            pawns = self.bb[WP]
+            while pawns:
+                lsb = pawns & -pawns
+                from_sq = lsb.bit_length() - 1
+                file_idx = from_sq % 8
+                rank_idx = from_sq // 8
+
+                # Single push
+                to_sq = from_sq + 8
+                if to_sq <= 63 and not ((occ_all >> to_sq) & 1):
+                    moves.append(Move(from_sq, to_sq))
+                    # Double push from rank 2 (rank_idx == 1)
+                    if rank_idx == 1:
+                        to2 = from_sq + 16
+                        if not ((occ_all >> to2) & 1):
+                            moves.append(Move(from_sq, to2))
+
+                # Captures
+                # Left capture (from White's perspective): +7 if not on file a
+                if file_idx > 0:
+                    cap = from_sq + 7
+                    if cap <= 63 and ((occ_black >> cap) & 1):
+                        moves.append(Move(from_sq, cap))
+                # Right capture: +9 if not on file h
+                if file_idx < 7:
+                    cap = from_sq + 9
+                    if cap <= 63 and ((occ_black >> cap) & 1):
+                        moves.append(Move(from_sq, cap))
+
+                pawns ^= lsb
+        else:
+            pawns = self.bb[BP]
+            while pawns:
+                lsb = pawns & -pawns
+                from_sq = lsb.bit_length() - 1
+                file_idx = from_sq % 8
+                rank_idx = from_sq // 8
+
+                # Single push
+                to_sq = from_sq - 8
+                if to_sq >= 0 and not ((occ_all >> to_sq) & 1):
+                    moves.append(Move(from_sq, to_sq))
+                    # Double push from rank 7 (rank_idx == 6)
+                    if rank_idx == 6:
+                        to2 = from_sq - 16
+                        if not ((occ_all >> to2) & 1):
+                            moves.append(Move(from_sq, to2))
+
+                # Captures
+                # Left capture from Black's perspective: -9 if not on file a
+                if file_idx > 0:
+                    cap = from_sq - 9
+                    if cap >= 0 and ((occ_white >> cap) & 1):
+                        moves.append(Move(from_sq, cap))
+                # Right capture: -7 if not on file h
+                if file_idx < 7:
+                    cap = from_sq - 7
+                    if cap >= 0 and ((occ_white >> cap) & 1):
+                        moves.append(Move(from_sq, cap))
+
+                pawns ^= lsb
+
+        return moves
 
     def apply(self, move: Move) -> "Board":
         # To be implemented in Plan 3
