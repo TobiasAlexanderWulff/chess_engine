@@ -4,9 +4,14 @@ import logging
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field
 
-from .error import exception_handler
+from .error import (
+    exception_handler,
+    http_exception_handler,
+    request_validation_exception_handler,
+)
 from .logging_middleware import RequestIDLoggingMiddleware
 from ...engine.game import Game
 from ...engine.move import parse_uci
@@ -48,6 +53,9 @@ def create_app() -> FastAPI:
 
     # Middleware & error handling
     app.add_middleware(RequestIDLoggingMiddleware)
+    # Preserve FastAPI 422 validation behavior and structured HTTP errors
+    app.add_exception_handler(HTTPException, http_exception_handler)
+    app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
     app.add_exception_handler(Exception, exception_handler)
 
     # In-memory single-session placeholder (Plan 5 will add sessions)
@@ -77,7 +85,10 @@ def create_app() -> FastAPI:
     @app.post("/api/games/{game_id}/position", response_model=GameState)
     async def set_position(game_id: str, req: SetPositionRequest) -> GameState:
         game = _require_game(state, game_id)
-        state[game_id] = Game.from_fen(req.fen)
+        try:
+            state[game_id] = Game.from_fen(req.fen)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid FEN")
         game = state[game_id]
         return GameState(
             game_id=game_id,

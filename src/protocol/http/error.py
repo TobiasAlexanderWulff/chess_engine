@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 from fastapi import Request
 from fastapi import HTTPException as FastAPIHTTPException
 from fastapi.responses import JSONResponse
 from starlette import status
+from fastapi.exceptions import RequestValidationError
 
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,28 @@ async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
         request_id=request_id,
     )
     return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=payload)
+
+
+async def request_validation_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", "")
+    # Map Pydantic/FastAPI validation errors to our structured envelope with 422
+    errors = []
+    rve = cast(RequestValidationError, exc)
+    for e in rve.errors():
+        loc = ".".join(str(p) for p in e.get("loc", []) if p is not None)
+        msg = e.get("msg", "invalid value")
+        typ = e.get("type", "value_error")
+        errors.append({"field": loc, "code": typ, "message": msg})
+    payload = error_envelope(
+        code="unprocessable_entity",
+        message="Validation error",
+        err_type="client_error",
+        request_id=request_id,
+        field_errors=errors or None,
+    )
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
 
 
 def _status_to_code(status_code: int) -> str:
