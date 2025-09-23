@@ -19,11 +19,16 @@ scripts/
 assets/
 ```
 
+Note: For detailed, scoped rules see `src/AGENTS.md` (applies to all of `src/`) and `tests/AGENTS.md` (applies to all of `tests/`). More deeply nested AGENTS.md files may override parent scopes for their subtrees.
+
 ## Build, Test, and Development Commands
 - Prefer Make targets if present: `make build`, `make test`, `make run`.
 - Python: `python -m pytest -q`, `ruff check .`, `black .`.
 - Rust: `cargo build --release`, `cargo test`, `cargo fmt -- --check`.
 - C/C++: `cmake -S . -B build && cmake --build build`, `ctest --test-dir build`.
+
+- Use pre-commit hooks to automate formatting/linting before commits (e.g., `pre-commit` running `black` and `ruff`).
+- Centralize tool configuration (e.g., `pyproject.toml`) and pin dependencies (e.g., `poetry.lock` or `requirements.txt`) to ensure reproducible builds.
 
 Use the project’s configured toolchain when available; otherwise follow the above equivalents.
 
@@ -49,4 +54,3 @@ Use the project’s configured toolchain when available; otherwise follow the ab
 ## Architecture Notes
 - Layers: representation → move gen → search → evaluation → protocol (UCI) → CLI.
 - Keep UCI/CLI isolated from engine; no I/O in core modules.
-
