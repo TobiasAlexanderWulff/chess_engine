@@ -371,6 +371,30 @@ class Board:
                         if not ((occ_white >> to_sq) & 1):
                             if not self._is_attacked(to_sq, by_white=False):
                                 moves.append(Move(from_sq, to_sq))
+                # Castling (white)
+                # Precondition: king on e1 (square 4) and not in check
+                if from_sq == 4 and not self._is_attacked(4, by_white=False):
+                    # Kingside: rights K, squares f1(5) and g1(6) empty and not attacked
+                    if (
+                        "K" in self.castling
+                        and not ((occ_all >> 5) & 1)
+                        and not ((occ_all >> 6) & 1)
+                    ):
+                        if not self._is_attacked(5, by_white=False) and not self._is_attacked(
+                            6, by_white=False
+                        ):
+                            moves.append(Move(4, 6))
+                    # Queenside: rights Q, squares d1(3), c1(2), b1(1) empty; d1 and c1 not attacked
+                    if (
+                        "Q" in self.castling
+                        and not ((occ_all >> 3) & 1)
+                        and not ((occ_all >> 2) & 1)
+                        and not ((occ_all >> 1) & 1)
+                    ):
+                        if not self._is_attacked(3, by_white=False) and not self._is_attacked(
+                            2, by_white=False
+                        ):
+                            moves.append(Move(4, 2))
         else:
             pawns = self.bb[BP]
             while pawns:
@@ -545,6 +569,29 @@ class Board:
                         if not ((occ_black >> to_sq) & 1):
                             if not self._is_attacked(to_sq, by_white=True):
                                 moves.append(Move(from_sq, to_sq))
+                # Castling (black) if king on e8 (60) and not in check
+                if from_sq == 60 and not self._is_attacked(60, by_white=True):
+                    # Kingside: rights k, squares f8(61), g8(62) empty and not attacked
+                    if (
+                        "k" in self.castling
+                        and not ((occ_all >> 61) & 1)
+                        and not ((occ_all >> 62) & 1)
+                    ):
+                        if not self._is_attacked(61, by_white=True) and not self._is_attacked(
+                            62, by_white=True
+                        ):
+                            moves.append(Move(60, 62))
+                    # Queenside: rights q, squares d8(59), c8(58), b8(57) empty; d8 and c8 not attacked
+                    if (
+                        "q" in self.castling
+                        and not ((occ_all >> 59) & 1)
+                        and not ((occ_all >> 58) & 1)
+                        and not ((occ_all >> 57) & 1)
+                    ):
+                        if not self._is_attacked(59, by_white=True) and not self._is_attacked(
+                            58, by_white=True
+                        ):
+                            moves.append(Move(60, 58))
 
         # Filter out moves that leave own king in check.
         legal: List[Move] = []
@@ -652,7 +699,7 @@ class Board:
             else:
                 self.bb[captured_piece] &= ~(1 << to_sq)
 
-        # Place moved piece (or promoted piece)
+        # Place moved piece (or promoted piece); handle castling rook move
         if moved_piece == WP:
             if move.promotion:
                 promo_map = {"q": WQ, "r": WR, "b": WB, "n": WN}
@@ -671,6 +718,22 @@ class Board:
                 if from_sq - to_sq == 16:
                     self.ep_square = from_sq - 8
         else:
+            # King including castling rook movement
+            if moved_piece == WK and abs(to_sq - from_sq) == 2:
+                # Move rook as well
+                if to_sq == 6:  # e1->g1, h1->f1
+                    self.bb[WR] &= ~(1 << 7)
+                    self.bb[WR] |= 1 << 5
+                else:  # e1->c1, a1->d1
+                    self.bb[WR] &= ~(1 << 0)
+                    self.bb[WR] |= 1 << 3
+            elif moved_piece == BK and abs(to_sq - from_sq) == 2:
+                if to_sq == 62:  # e8->g8, h8->f8
+                    self.bb[BR] &= ~(1 << 63)
+                    self.bb[BR] |= 1 << 61
+                else:  # e8->c8, a8->d8
+                    self.bb[BR] &= ~(1 << 56)
+                    self.bb[BR] |= 1 << 59
             self.bb[moved_piece] |= 1 << to_sq
 
         # Toggle side to move
@@ -726,6 +789,21 @@ class Board:
                 self.bb[BP] &= ~(1 << to_sq)
                 self.bb[BP] |= 1 << from_sq
         else:
+            # Handle castling rook rollback
+            if moved_piece == WK and abs(to_sq - from_sq) == 2:
+                if to_sq == 6:  # undo rook f1->h1
+                    self.bb[WR] &= ~(1 << 5)
+                    self.bb[WR] |= 1 << 7
+                else:  # to_sq == 2: undo rook d1->a1
+                    self.bb[WR] &= ~(1 << 3)
+                    self.bb[WR] |= 1 << 0
+            elif moved_piece == BK and abs(to_sq - from_sq) == 2:
+                if to_sq == 62:  # undo rook f8->h8
+                    self.bb[BR] &= ~(1 << 61)
+                    self.bb[BR] |= 1 << 63
+                else:  # to_sq == 58: undo rook d8->a8
+                    self.bb[BR] &= ~(1 << 59)
+                    self.bb[BR] |= 1 << 56
             self.bb[moved_piece] &= ~(1 << to_sq)
             self.bb[moved_piece] |= 1 << from_sq
 
@@ -926,6 +1004,14 @@ class Board:
             elif (bb[WK] >> from_sq) & 1:
                 bb[WK] &= ~(1 << from_sq)
                 bb[WK] |= 1 << to_sq
+                # Handle rook relocation for castling in simulation
+                if abs(to_sq - from_sq) == 2:
+                    if to_sq == 6:  # white kingside e1->g1, rook h1->f1
+                        bb[WR] &= ~(1 << 7)
+                        bb[WR] |= 1 << 5
+                    elif to_sq == 2:  # white queenside e1->c1, rook a1->d1
+                        bb[WR] &= ~(1 << 0)
+                        bb[WR] |= 1 << 3
                 moved = True
             elif (bb[WB] >> from_sq) & 1:
                 bb[WB] &= ~(1 << from_sq)
@@ -962,6 +1048,13 @@ class Board:
             elif (bb[BK] >> from_sq) & 1:
                 bb[BK] &= ~(1 << from_sq)
                 bb[BK] |= 1 << to_sq
+                if abs(to_sq - from_sq) == 2:
+                    if to_sq == 62:  # black kingside e8->g8, rook h8->f8
+                        bb[BR] &= ~(1 << 63)
+                        bb[BR] |= 1 << 61
+                    elif to_sq == 58:  # black queenside e8->c8, rook a8->d8
+                        bb[BR] &= ~(1 << 56)
+                        bb[BR] |= 1 << 59
                 moved = True
             elif (bb[BB] >> from_sq) & 1:
                 bb[BB] &= ~(1 << from_sq)
