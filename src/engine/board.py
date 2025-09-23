@@ -179,3 +179,23 @@ class Board:
     def apply(self, move: Move) -> "Board":
         # To be implemented in Plan 3
         raise NotImplementedError("move application not implemented yet")
+
+    # --- Plan 3 scaffolding ---
+    def make_move(self, move: Move) -> None:
+        """Apply `move` to this board in-place.
+
+        Scaffolding stub for Plan 3. To be implemented with full rules:
+        - normal moves, captures, promotions, castling, en passant
+        - update halfmove/fullmove counters, castling rights, ep square
+        - maintain Zobrist hash incrementally (once stored on Board or via external state)
+        """
+        raise NotImplementedError("make_move not implemented yet")
+
+    def unmake_move(self, move: Move) -> None:
+        """Undo the last move in-place, restoring previous state.
+
+        Scaffolding stub for Plan 3. Requires a move/state stack to restore:
+        - moved/captured/promoted pieces, castling rights, ep square, counters
+        - hash and any incremental caches
+        """
+        raise NotImplementedError("unmake_move not implemented yet")

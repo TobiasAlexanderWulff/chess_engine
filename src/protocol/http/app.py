@@ -16,6 +16,7 @@ from .logging_middleware import RequestIDLoggingMiddleware
 from ...engine.game import Game
 from ...engine.move import parse_uci
 from ...search.service import SearchService
+from ...engine.perft import perft as perft_nodes
 from .session import InMemorySessionStore
 
 
@@ -130,14 +131,18 @@ def create_app() -> FastAPI:
 
     @app.post("/api/perft")
     async def perft(payload: Dict[str, Any]) -> Dict[str, Any]:
-        # Placeholder response until move generation (Plan 3)
         fen = payload.get("fen")
         depth = int(payload.get("depth", 1))
         if not fen:
             raise HTTPException(status_code=400, detail="fen is required")
         if depth < 0:
             raise HTTPException(status_code=400, detail="depth must be >= 0")
-        return {"nodes": 0}
+        try:
+            game = Game.from_fen(fen)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid FEN")
+        nodes = perft_nodes(game.board, depth)
+        return {"nodes": nodes}
 
     return app
 
