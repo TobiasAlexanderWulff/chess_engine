@@ -36,6 +36,7 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
     Supports:
     - Pawn pushes and captures (promotions supported; no EP)
     - Knight moves and captures
+    - Bishop, Rook, Queen moves and captures
     - King moves and captures
     Updates: bb, side_to_move, ep_square (for pawn double pushes), half/fullmove.
     Leaves castling rights unchanged. Returns None for unsupported cases.
@@ -103,6 +104,39 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
                 bb[BQ] &= mask
                 bb[BK] &= mask
             bb[WN] |= 1 << to_sq
+        elif bb[WB] & (1 << from_sq):
+            bb[WB] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[BP] &= mask
+                bb[BN] &= mask
+                bb[BB] &= mask
+                bb[BR] &= mask
+                bb[BQ] &= mask
+                bb[BK] &= mask
+            bb[WB] |= 1 << to_sq
+        elif bb[WR] & (1 << from_sq):
+            bb[WR] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[BP] &= mask
+                bb[BN] &= mask
+                bb[BB] &= mask
+                bb[BR] &= mask
+                bb[BQ] &= mask
+                bb[BK] &= mask
+            bb[WR] |= 1 << to_sq
+        elif bb[WQ] & (1 << from_sq):
+            bb[WQ] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[BP] &= mask
+                bb[BN] &= mask
+                bb[BB] &= mask
+                bb[BR] &= mask
+                bb[BQ] &= mask
+                bb[BK] &= mask
+            bb[WQ] |= 1 << to_sq
         elif bb[WK] & (1 << from_sq):
             bb[WK] &= ~(1 << from_sq)
             if is_capture:
@@ -158,6 +192,39 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
                 bb[WQ] &= mask
                 bb[WK] &= mask
             bb[BN] |= 1 << to_sq
+        elif bb[BB] & (1 << from_sq):
+            bb[BB] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[WP] &= mask
+                bb[WN] &= mask
+                bb[WB] &= mask
+                bb[WR] &= mask
+                bb[WQ] &= mask
+                bb[WK] &= mask
+            bb[BB] |= 1 << to_sq
+        elif bb[BR] & (1 << from_sq):
+            bb[BR] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[WP] &= mask
+                bb[WN] &= mask
+                bb[WB] &= mask
+                bb[WR] &= mask
+                bb[WQ] &= mask
+                bb[WK] &= mask
+            bb[BR] |= 1 << to_sq
+        elif bb[BQ] & (1 << from_sq):
+            bb[BQ] &= ~(1 << from_sq)
+            if is_capture:
+                mask = ~(1 << to_sq)
+                bb[WP] &= mask
+                bb[WN] &= mask
+                bb[WB] &= mask
+                bb[WR] &= mask
+                bb[WQ] &= mask
+                bb[WK] &= mask
+            bb[BQ] |= 1 << to_sq
         elif bb[BK] & (1 << from_sq):
             bb[BK] &= ~(1 << from_sq)
             if is_capture:

@@ -261,6 +261,78 @@ class Board:
                         if not ((occ_white >> to_sq) & 1):
                             moves.append(Move(from_sq, to_sq))
                 knights ^= lsb
+            # Bishops
+            bishops = self.bb[WB]
+            while bishops:
+                lsb = bishops & -bishops
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_white >> to_sq) & 1:
+                            break
+                        moves.append(Move(from_sq, to_sq))
+                        if (occ_black >> to_sq) & 1:
+                            break
+                bishops ^= lsb
+            # Rooks
+            rooks = self.bb[WR]
+            while rooks:
+                lsb = rooks & -rooks
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_white >> to_sq) & 1:
+                            break
+                        moves.append(Move(from_sq, to_sq))
+                        if (occ_black >> to_sq) & 1:
+                            break
+                rooks ^= lsb
+            # Queens
+            queens = self.bb[WQ]
+            while queens:
+                lsb = queens & -queens
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, -1),
+                    (1, -1),
+                    (-1, 1),
+                    (1, 1),
+                    (-1, 0),
+                    (1, 0),
+                    (0, -1),
+                    (0, 1),
+                ):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_white >> to_sq) & 1:
+                            break
+                        moves.append(Move(from_sq, to_sq))
+                        if (occ_black >> to_sq) & 1:
+                            break
+                queens ^= lsb
             # En passant captures (destination is ep target)
             if self.ep_square is not None:
                 ep = self.ep_square
@@ -364,6 +436,78 @@ class Board:
                         if not ((occ_black >> to_sq) & 1):
                             moves.append(Move(from_sq, to_sq))
                 knights ^= lsb
+            # Bishops
+            bishops = self.bb[BB]
+            while bishops:
+                lsb = bishops & -bishops
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_black >> to_sq) & 1:
+                            break
+                        moves.append(Move(from_sq, to_sq))
+                        if (occ_white >> to_sq) & 1:
+                            break
+                bishops ^= lsb
+            # Rooks
+            rooks = self.bb[BR]
+            while rooks:
+                lsb = rooks & -rooks
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_black >> to_sq) & 1:
+                            break
+                        moves.append(Move(from_sq, to_sq))
+                        if (occ_white >> to_sq) & 1:
+                            break
+                rooks ^= lsb
+            # Queens
+            queens = self.bb[BQ]
+            while queens:
+                lsb = queens & -queens
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, -1),
+                    (1, -1),
+                    (-1, 1),
+                    (1, 1),
+                    (-1, 0),
+                    (1, 0),
+                    (0, -1),
+                    (0, 1),
+                ):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_black >> to_sq) & 1:
+                            break
+                        moves.append(Move(from_sq, to_sq))
+                        if (occ_white >> to_sq) & 1:
+                            break
+                queens ^= lsb
             # En passant captures (destination is ep target)
             if self.ep_square is not None:
                 ep = self.ep_square
@@ -552,7 +696,8 @@ class Board:
     def _apply_pseudo_to_bb(self, move: Move) -> Optional[List[int]]:
         """Apply a simple move to a copy of bitboards; return new bitboards.
 
-        Supports: pawns (incl. promotions and en passant), knights, king.
+        Supports: pawns (incl. promotions and en passant), knights, king,
+        bishops, rooks, and queens.
         """
         from_sq, to_sq = move.from_sq, move.to_sq
         is_white = self.side_to_move == "w"
@@ -601,6 +746,18 @@ class Board:
                 bb[WK] &= ~(1 << from_sq)
                 bb[WK] |= 1 << to_sq
                 moved = True
+            elif (bb[WB] >> from_sq) & 1:
+                bb[WB] &= ~(1 << from_sq)
+                bb[WB] |= 1 << to_sq
+                moved = True
+            elif (bb[WR] >> from_sq) & 1:
+                bb[WR] &= ~(1 << from_sq)
+                bb[WR] |= 1 << to_sq
+                moved = True
+            elif (bb[WQ] >> from_sq) & 1:
+                bb[WQ] &= ~(1 << from_sq)
+                bb[WQ] |= 1 << to_sq
+                moved = True
         else:
             if (bb[BP] >> from_sq) & 1:
                 bb[BP] &= ~(1 << from_sq)
@@ -624,6 +781,18 @@ class Board:
             elif (bb[BK] >> from_sq) & 1:
                 bb[BK] &= ~(1 << from_sq)
                 bb[BK] |= 1 << to_sq
+                moved = True
+            elif (bb[BB] >> from_sq) & 1:
+                bb[BB] &= ~(1 << from_sq)
+                bb[BB] |= 1 << to_sq
+                moved = True
+            elif (bb[BR] >> from_sq) & 1:
+                bb[BR] &= ~(1 << from_sq)
+                bb[BR] |= 1 << to_sq
+                moved = True
+            elif (bb[BQ] >> from_sq) & 1:
+                bb[BQ] &= ~(1 << from_sq)
+                bb[BQ] |= 1 << to_sq
                 moved = True
 
         if not moved:
