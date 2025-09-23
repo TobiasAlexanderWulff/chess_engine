@@ -1,0 +1,108 @@
+########################################
+# General .gitignore for this repository
+# Covers common OS/editor files and
+# typical artifacts for Python, Rust, C/C++
+########################################
+
+# OS-specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Trash-*/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.code-workspace
+*.iml
+
+# Temporary / backup
+*.swp
+*.swo
+*~
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+.nfs*
+
+# Env / tooling
+.env
+.env.*
+!.env.example
+.direnv/
+.python-version
+
+# Logs & caches
+logs/
+*.log
+.cache/
+.tmp/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test/coverage artifacts
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+lcov.info
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+pip-wheel-metadata/
+*.egg-info/
+*.egg
+MANIFEST
+.ipynb_checkpoints/
+.pyre/
+.pytype/
+.dmypy.json
+
+# Rust
+target/
+
+# C/C++ (incl. CMake & common objects)
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.dylib
+*.so
+*.exe
+*.out
+
+# Benchmark tooling
+.benchmarks/
