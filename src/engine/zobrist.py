@@ -84,9 +84,40 @@ def compute_hash_from_scratch(board: "Board") -> int:
 
 
 def incremental_hash_update(current_hash: int, board_before: "Board", board_after: "Board") -> int:
-    """Incrementally update a hash given before/after boards (placeholder).
+    """Incrementally compute Zobrist hash given before/after boards.
 
-    For now, compute-from-scratch to validate parity; replace with true
-    incremental updates after make/unmake implementation.
+    Applies XOR toggles for all changes between `board_before` and `board_after`,
+    starting from `current_hash` (which must be the Zobrist hash of `board_before`).
+    Deterministic and side-effect free.
     """
-    return compute_hash_from_scratch(board_after)
+    h = current_hash & MASK64
+
+    # Piece-square toggles for any differences across all 12 piece bitboards
+    for p in range(12):
+        diff = (board_before.bb[p] ^ board_after.bb[p]) & MASK64
+        while diff:
+            lsb = diff & -diff
+            sq = lsb.bit_length() - 1
+            h ^= ZOBRIST.piece_square[p][sq]
+            diff ^= lsb
+
+    # Side to move toggle
+    if board_before.side_to_move != board_after.side_to_move:
+        h ^= ZOBRIST.side_to_move
+
+    # Castling rights: toggle rights present in before, then those present in after
+    order = "KQkq"
+    for i, ch in enumerate(order):
+        if ch in board_before.castling:
+            h ^= ZOBRIST.castling[i]
+    for i, ch in enumerate(order):
+        if ch in board_after.castling:
+            h ^= ZOBRIST.castling[i]
+
+    # En passant file: toggle previous (if any) then new (if any)
+    if board_before.ep_square is not None:
+        h ^= ZOBRIST.ep_file[board_before.ep_square % 8]
+    if board_after.ep_square is not None:
+        h ^= ZOBRIST.ep_file[board_after.ep_square % 8]
+
+    return h & MASK64
