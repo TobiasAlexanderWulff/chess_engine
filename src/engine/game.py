@@ -18,7 +18,7 @@ class Game:
 
     @classmethod
     def new(cls) -> "Game":
-        return cls(board=Board())
+        return cls(board=Board.startpos())
 
     @classmethod
     def from_fen(cls, fen: str) -> "Game":
