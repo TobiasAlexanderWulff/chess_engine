@@ -13,3 +13,11 @@ This repository will host an API-first chess engine. Planning documents are in `
 - `docs/plans/plan-08-uci-and-cli.md` – optional UCI + CLI.
 
 Follow the meta plan to proceed with implementation.
+
+## Quick Start (Dev)
+- Install deps: `python -m pip install -e .[dev]`
+- Run API: `make run` then open `http://localhost:8000/healthz`
+- Tests: `make test`
+- Lint/format: `make lint` / `make format`
+
+Project structure follows `AGENTS.md` with core engine in `src/engine`, search in `src/search`, and the HTTP layer in `src/protocol/http`. Core modules are pure/deterministic; all I/O stays in protocol/CLI layers.

@@ -1,0 +1,238 @@
+openapi: 3.0.3
+info:
+  title: Chess Engine API
+  version: 0.0.1
+servers:
+  - url: http://localhost:8000
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                required: [status]
+  /api/games:
+    post:
+      summary: Create a new game
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGameResponse'
+  /api/games/{id}/state:
+    get:
+      summary: Get current game state
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/games/{id}/position:
+    post:
+      summary: Set position from FEN
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fen:
+                  type: string
+              required: [fen]
+      responses:
+        '200':
+          description: Updated state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/games/{id}/move:
+    post:
+      summary: Apply UCI move
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                move:
+                  type: string
+                  description: UCI move string
+              required: [move]
+      responses:
+        '200':
+          description: Updated state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/games/{id}/search:
+    post:
+      summary: Run a search from current position
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                depth:
+                  type: integer
+                  minimum: 1
+                  maximum: 64
+                movetime_ms:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Search result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/perft:
+    post:
+      summary: Perft from FEN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fen:
+                  type: string
+                depth:
+                  type: integer
+                  minimum: 0
+              required: [fen, depth]
+      responses:
+        '200':
+          description: Node count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/Error'
+
+components:
+  schemas:
+    CreateGameResponse:
+      type: object
+      properties:
+        game_id:
+          type: string
+        fen:
+          type: string
+      required: [game_id, fen]
+    GameState:
+      type: object
+      properties:
+        game_id:
+          type: string
+        fen:
+          type: string
+        legal_moves:
+          type: array
+          items:
+            type: string
+      required: [game_id, fen, legal_moves]
+    SearchResult:
+      type: object
+      properties:
+        best_move:
+          type: string
+          nullable: true
+        score:
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                cp:
+                  type: integer
+        pv:
+          type: array
+          items:
+            type: string
+        nodes:
+          type: integer
+        depth:
+          type: integer
+        time_ms:
+          type: integer
+      required: [pv, nodes, depth, time_ms]
+  responses:
+    Error:
+      description: Structured error response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  message:
+                    type: string
+                  type:
+                    type: string
+                  request_id:
+                    type: string
+                required: [code, message, type, request_id]
+
