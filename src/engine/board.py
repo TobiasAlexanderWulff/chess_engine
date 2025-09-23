@@ -181,6 +181,7 @@ class Board:
         added in a later slice.
         """
         moves: List[Move] = []
+        PROMOS = ("q", "r", "b", "n")
 
         # Occupancy helpers
         occ_all = 0
@@ -201,27 +202,39 @@ class Board:
                 file_idx = from_sq % 8
                 rank_idx = from_sq // 8
 
-                # Single push
+                # Single push (handle promotions from rank 7 → 8)
                 to_sq = from_sq + 8
                 if to_sq <= 63 and not ((occ_all >> to_sq) & 1):
-                    moves.append(Move(from_sq, to_sq))
-                    # Double push from rank 2 (rank_idx == 1)
-                    if rank_idx == 1:
-                        to2 = from_sq + 16
-                        if not ((occ_all >> to2) & 1):
-                            moves.append(Move(from_sq, to2))
+                    if rank_idx == 6:  # promotion
+                        for promo in PROMOS:
+                            moves.append(Move(from_sq, to_sq, promotion=promo))
+                    else:
+                        moves.append(Move(from_sq, to_sq))
+                        # Double push from rank 2 (rank_idx == 1)
+                        if rank_idx == 1:
+                            to2 = from_sq + 16
+                            if not ((occ_all >> to2) & 1):
+                                moves.append(Move(from_sq, to2))
 
                 # Captures
                 # Left capture (from White's perspective): +7 if not on file a
                 if file_idx > 0:
                     cap = from_sq + 7
                     if cap <= 63 and ((occ_black >> cap) & 1):
-                        moves.append(Move(from_sq, cap))
+                        if (cap // 8) == 7:
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, cap, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, cap))
                 # Right capture: +9 if not on file h
                 if file_idx < 7:
                     cap = from_sq + 9
                     if cap <= 63 and ((occ_black >> cap) & 1):
-                        moves.append(Move(from_sq, cap))
+                        if (cap // 8) == 7:
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, cap, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, cap))
 
                 pawns ^= lsb
             # Knights (no legality filtering yet)
@@ -256,27 +269,39 @@ class Board:
                 file_idx = from_sq % 8
                 rank_idx = from_sq // 8
 
-                # Single push
+                # Single push (handle promotions from rank 2 → 1)
                 to_sq = from_sq - 8
                 if to_sq >= 0 and not ((occ_all >> to_sq) & 1):
-                    moves.append(Move(from_sq, to_sq))
-                    # Double push from rank 7 (rank_idx == 6)
-                    if rank_idx == 6:
-                        to2 = from_sq - 16
-                        if not ((occ_all >> to2) & 1):
-                            moves.append(Move(from_sq, to2))
+                    if rank_idx == 1:  # promotion
+                        for promo in PROMOS:
+                            moves.append(Move(from_sq, to_sq, promotion=promo))
+                    else:
+                        moves.append(Move(from_sq, to_sq))
+                        # Double push from rank 7 (rank_idx == 6)
+                        if rank_idx == 6:
+                            to2 = from_sq - 16
+                            if not ((occ_all >> to2) & 1):
+                                moves.append(Move(from_sq, to2))
 
                 # Captures
                 # Left capture from Black's perspective: -9 if not on file a
                 if file_idx > 0:
                     cap = from_sq - 9
                     if cap >= 0 and ((occ_white >> cap) & 1):
-                        moves.append(Move(from_sq, cap))
+                        if (cap // 8) == 0:
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, cap, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, cap))
                 # Right capture: -7 if not on file h
                 if file_idx < 7:
                     cap = from_sq - 7
                     if cap >= 0 and ((occ_white >> cap) & 1):
-                        moves.append(Move(from_sq, cap))
+                        if (cap // 8) == 0:
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, cap, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, cap))
 
                 pawns ^= lsb
             # Knights (no legality filtering yet)

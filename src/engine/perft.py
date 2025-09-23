@@ -69,10 +69,18 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
                 bb[BR] &= mask
                 bb[BQ] &= mask
                 bb[BK] &= mask
-            bb[WP] |= 1 << to_sq
-            # EP target on double push
-            if to_sq - from_sq == 16:
-                ep_square = from_sq + 8
+            # Promotion handling
+            if move.promotion:
+                promo_map = {"q": WQ, "r": WR, "b": WB, "n": WN}
+                target = promo_map.get(move.promotion)
+                if target is None:
+                    return None
+                bb[target] |= 1 << to_sq
+            else:
+                bb[WP] |= 1 << to_sq
+                # EP target on double push
+                if to_sq - from_sq == 16:
+                    ep_square = from_sq + 8
         elif bb[WN] & (1 << from_sq):
             bb[WN] &= ~(1 << from_sq)
             if is_capture:
@@ -98,9 +106,16 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
                 bb[WR] &= mask
                 bb[WQ] &= mask
                 bb[WK] &= mask
-            bb[BP] |= 1 << to_sq
-            if from_sq - to_sq == 16:
-                ep_square = from_sq - 8
+            if move.promotion:
+                promo_map = {"q": BQ, "r": BR, "b": BB, "n": BN}
+                target = promo_map.get(move.promotion)
+                if target is None:
+                    return None
+                bb[target] |= 1 << to_sq
+            else:
+                bb[BP] |= 1 << to_sq
+                if from_sq - to_sq == 16:
+                    ep_square = from_sq - 8
         elif bb[BN] & (1 << from_sq):
             bb[BN] &= ~(1 << from_sq)
             if is_capture:
