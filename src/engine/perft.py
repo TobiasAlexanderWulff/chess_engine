@@ -52,7 +52,7 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
     for b in bb:
         occ_all |= b
 
-    # Determine if capture based on pre-move occupancy
+    # Determine if capture based on pre-move occupancy or en passant
     is_capture = (occ_all >> to_sq) & 1 == 1
 
     moved_is_pawn = False
@@ -62,6 +62,16 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
             moved_is_pawn = True
             # Remove pawn and place at destination
             bb[WP] &= ~(1 << from_sq)
+            # En passant capture: destination equals ep target; remove pawn behind
+            is_ep = (
+                board.ep_square is not None
+                and to_sq == board.ep_square
+                and (to_sq - from_sq) in (7, 9)
+            )
+            if is_ep:
+                cap_sq = to_sq - 8
+                bb[BP] &= ~(1 << cap_sq)
+                is_capture = True
             if is_capture:
                 mask = ~(1 << to_sq)
                 bb[BP] &= mask
@@ -110,6 +120,15 @@ def _apply_pseudo_move(board: Board, move: Move) -> Board | None:
         if bb[BP] & (1 << from_sq):
             moved_is_pawn = True
             bb[BP] &= ~(1 << from_sq)
+            is_ep = (
+                board.ep_square is not None
+                and to_sq == board.ep_square
+                and (from_sq - to_sq) in (7, 9)
+            )
+            if is_ep:
+                cap_sq = to_sq + 8
+                bb[WP] &= ~(1 << cap_sq)
+                is_capture = True
             if is_capture:
                 mask = ~(1 << to_sq)
                 bb[WP] &= mask

@@ -261,6 +261,19 @@ class Board:
                         if not ((occ_white >> to_sq) & 1):
                             moves.append(Move(from_sq, to_sq))
                 knights ^= lsb
+            # En passant captures (destination is ep target)
+            if self.ep_square is not None:
+                ep = self.ep_square
+                ep_file = ep % 8
+                # Origins that could capture onto ep square
+                if ep_file > 0:
+                    o = ep - 9
+                    if o >= 0 and ((self.bb[WP] >> o) & 1):
+                        moves.append(Move(o, ep))
+                if ep_file < 7:
+                    o = ep - 7
+                    if o >= 0 and ((self.bb[WP] >> o) & 1):
+                        moves.append(Move(o, ep))
             # King moves: avoid moving into opponent attacks
             king_bb = self.bb[WK]
             if king_bb:
@@ -351,6 +364,18 @@ class Board:
                         if not ((occ_black >> to_sq) & 1):
                             moves.append(Move(from_sq, to_sq))
                 knights ^= lsb
+            # En passant captures (destination is ep target)
+            if self.ep_square is not None:
+                ep = self.ep_square
+                ep_file = ep % 8
+                if ep_file < 7:
+                    o = ep + 9
+                    if o <= 63 and ((self.bb[BP] >> o) & 1):
+                        moves.append(Move(o, ep))
+                if ep_file > 0:
+                    o = ep + 7
+                    if o <= 63 and ((self.bb[BP] >> o) & 1):
+                        moves.append(Move(o, ep))
             # King moves: avoid moving into opponent attacks
             king_bb = self.bb[BK]
             if king_bb:
@@ -527,7 +552,7 @@ class Board:
     def _apply_pseudo_to_bb(self, move: Move) -> Optional[List[int]]:
         """Apply a simple move to a copy of bitboards; return new bitboards.
 
-        Supports: pawns (incl. promotions, no en passant), knights, king.
+        Supports: pawns (incl. promotions and en passant), knights, king.
         """
         from_sq, to_sq = move.from_sq, move.to_sq
         is_white = self.side_to_move == "w"
@@ -554,6 +579,14 @@ class Board:
         if is_white:
             if (bb[WP] >> from_sq) & 1:
                 bb[WP] &= ~(1 << from_sq)
+                # En passant capture (destination equals ep target): remove pawn behind target
+                if (
+                    self.ep_square is not None
+                    and to_sq == self.ep_square
+                    and (to_sq - from_sq) in (7, 9)
+                ):
+                    cap_sq = to_sq - 8
+                    bb[BP] &= ~(1 << cap_sq)
                 if move.promotion:
                     promo_map = {"q": WQ, "r": WR, "b": WB, "n": WN}
                     bb[promo_map[move.promotion]] |= 1 << to_sq
@@ -571,6 +604,13 @@ class Board:
         else:
             if (bb[BP] >> from_sq) & 1:
                 bb[BP] &= ~(1 << from_sq)
+                if (
+                    self.ep_square is not None
+                    and to_sq == self.ep_square
+                    and (from_sq - to_sq) in (7, 9)
+                ):
+                    cap_sq = to_sq + 8
+                    bb[WP] &= ~(1 << cap_sq)
                 if move.promotion:
                     promo_map = {"q": BQ, "r": BR, "b": BB, "n": BN}
                     bb[promo_map[move.promotion]] |= 1 << to_sq
