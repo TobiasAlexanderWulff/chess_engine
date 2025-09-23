@@ -80,9 +80,7 @@ async def exception_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=payload)
 
 
-async def request_validation_exception_handler(
-    request: Request, exc: Exception
-) -> JSONResponse:
+async def request_validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     request_id = getattr(request.state, "request_id", "")
     # Map Pydantic/FastAPI validation errors to our structured envelope with 422
     errors = []
@@ -99,7 +97,7 @@ async def request_validation_exception_handler(
         request_id=request_id,
         field_errors=errors or None,
     )
-    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=payload)
+    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, content=payload)
 
 
 def _status_to_code(status_code: int) -> str:
@@ -113,7 +111,7 @@ def _status_to_code(status_code: int) -> str:
         return "forbidden"
     if status_code == status.HTTP_409_CONFLICT:
         return "conflict"
-    if status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
+    if status_code == status.HTTP_422_UNPROCESSABLE_CONTENT:
         return "unprocessable_entity"
     if 500 <= status_code < 600:
         return "internal_error"

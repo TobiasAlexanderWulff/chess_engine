@@ -16,6 +16,7 @@ from .logging_middleware import RequestIDLoggingMiddleware
 from ...engine.game import Game
 from ...engine.move import parse_uci
 from ...search.service import SearchService
+from .session import InMemorySessionStore
 
 
 logger = logging.getLogger(__name__)
@@ -58,8 +59,8 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
     app.add_exception_handler(Exception, exception_handler)
 
-    # In-memory single-session placeholder (Plan 5 will add sessions)
-    state: Dict[str, Game] = {}
+    # In-memory session store for games
+    store = InMemorySessionStore()
 
     @app.get("/healthz")
     async def healthz() -> Dict[str, str]:
@@ -67,15 +68,13 @@ def create_app() -> FastAPI:
 
     @app.post("/api/games", response_model=CreateGameResponse)
     async def create_game() -> CreateGameResponse:
-        # Placeholder: single game with fixed ID until sessions are added (Plan 5)
-        game_id = "default"
-        game = Game.new()
-        state[game_id] = game
+        game_id = store.create(Game.new())
+        game = _require_game(store, game_id)
         return CreateGameResponse(game_id=game_id, fen=game.to_fen())
 
     @app.get("/api/games/{game_id}/state", response_model=GameState)
     async def get_state(game_id: str) -> GameState:
-        game = _require_game(state, game_id)
+        game = _require_game(store, game_id)
         return GameState(
             game_id=game_id,
             fen=game.to_fen(),
@@ -84,12 +83,12 @@ def create_app() -> FastAPI:
 
     @app.post("/api/games/{game_id}/position", response_model=GameState)
     async def set_position(game_id: str, req: SetPositionRequest) -> GameState:
-        game = _require_game(state, game_id)
+        _require_game(store, game_id)
         try:
-            state[game_id] = Game.from_fen(req.fen)
+            store.set(game_id, Game.from_fen(req.fen))
         except ValueError:
             raise HTTPException(status_code=400, detail="invalid FEN")
-        game = state[game_id]
+        game = _require_game(store, game_id)
         return GameState(
             game_id=game_id,
             fen=game.to_fen(),
@@ -98,7 +97,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/games/{game_id}/move", response_model=GameState)
     async def make_move(game_id: str, req: MoveRequest) -> GameState:
-        game = _require_game(state, game_id)
+        game = _require_game(store, game_id)
         try:
             move = parse_uci(req.move)
         except ValueError as e:
@@ -117,7 +116,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/games/{game_id}/search")
     async def search(game_id: str, req: SearchRequest) -> Dict[str, Any]:
-        game = _require_game(state, game_id)
+        game = _require_game(store, game_id)
         service = SearchService()
         res = service.search(game, depth=req.depth or 1, movetime_ms=req.movetime_ms)
         return {
@@ -143,10 +142,11 @@ def create_app() -> FastAPI:
     return app
 
 
-def _require_game(state: Dict[str, Game], game_id: str) -> Game:
-    if game_id not in state:
+def _require_game(store: InMemorySessionStore, game_id: str) -> Game:
+    game = store.get(game_id)
+    if game is None:
         raise HTTPException(status_code=404, detail="game not found")
-    return state[game_id]
+    return game
 
 
 # Default app for non-factory servers

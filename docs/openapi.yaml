@@ -29,12 +29,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateGameResponse'
-  /api/games/{id}/state:
+  /api/games/{game_id}/state:
     get:
       summary: Get current game state
       parameters:
         - in: path
-          name: id
+          name: game_id
           required: true
           schema:
             type: string
@@ -47,12 +47,12 @@ paths:
                 $ref: '#/components/schemas/GameState'
         '404':
           $ref: '#/components/responses/Error'
-  /api/games/{id}/position:
+  /api/games/{game_id}/position:
     post:
       summary: Set position from FEN
       parameters:
         - in: path
-          name: id
+          name: game_id
           required: true
           schema:
             type: string
@@ -77,12 +77,12 @@ paths:
           $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-  /api/games/{id}/move:
+  /api/games/{game_id}/move:
     post:
       summary: Apply UCI move
       parameters:
         - in: path
-          name: id
+          name: game_id
           required: true
           schema:
             type: string
@@ -108,12 +108,12 @@ paths:
           $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
-  /api/games/{id}/search:
+  /api/games/{game_id}/search:
     post:
       summary: Run a search from current position
       parameters:
         - in: path
-          name: id
+          name: game_id
           required: true
           schema:
             type: string
@@ -235,4 +235,3 @@ components:
                   request_id:
                     type: string
                 required: [code, message, type, request_id]
-
