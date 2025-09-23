@@ -1,4 +1,6 @@
 PYTHON := python3
+DEPTH ?= 3
+FEN ?=
 
 .PHONY: build run test lint format
 
@@ -17,3 +19,6 @@ lint:
 format:
 	black .
 
+.PHONY: perft
+perft:
+	$(PYTHON) scripts/perft.py --depth $(DEPTH) $(if $(FEN),--fen "$(FEN)",)
