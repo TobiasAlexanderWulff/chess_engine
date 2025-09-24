@@ -70,6 +70,19 @@ def test_move_endpoint_applies_and_returns_state() -> None:
     assert isinstance(state["legal_moves"], list) and state["legal_moves"]
 
 
+def test_move_endpoint_illegal_returns_400() -> None:
+    client = _client()
+    r = client.post("/api/games")
+    game_id = r.json()["game_id"]
+
+    # From startpos, e2e5 is illegal
+    r_move = client.post(f"/api/games/{game_id}/move", json={"move": "e2e5"})
+    assert r_move.status_code == 400
+    body = r_move.json()
+    assert body["error"]["code"] == "bad_request"
+    assert "illegal" in body["error"]["message"].lower()
+
+
 def test_search_endpoint_shape() -> None:
     client = _client()
     r = client.post("/api/games")
