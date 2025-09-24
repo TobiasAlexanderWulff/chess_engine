@@ -7,6 +7,7 @@ import time
 from src.engine.game import Game
 from src.engine.move import Move
 from src.eval import evaluate
+from src.engine.board import WP, WN, WB, WR, WQ, WK, BP, BN, BB, BR, BQ, BK
 
 
 @dataclass
@@ -149,6 +150,46 @@ class SearchService:
 
             killer_list = killers.get(ply, [])
 
+            # Piece values for MVV-LVA (centipawns)
+            piece_vals = [
+                100,
+                320,
+                330,
+                500,
+                900,
+                20000,  # white P N B R Q K
+                100,
+                320,
+                330,
+                500,
+                900,
+                20000,  # black P N B R Q K
+            ]
+
+            def attacker_piece_index(mv: Move) -> Optional[int]:
+                # Determine which piece is moving from the origin square
+                if board.side_to_move == "w":
+                    own = (WP, WN, WB, WR, WQ, WK)
+                else:
+                    own = (BP, BN, BB, BR, BQ, BK)
+                for p in own:
+                    if (board.bb[p] >> mv.from_sq) & 1:
+                        return p
+                return None
+
+            def victim_piece_index(mv: Move) -> Optional[int]:
+                # Determine captured piece on destination (or EP pawn)
+                if board.ep_square is not None and mv.to_sq == board.ep_square:
+                    return BP if board.side_to_move == "w" else WP
+                if board.side_to_move == "w":
+                    opp = (BP, BN, BB, BR, BQ, BK)
+                else:
+                    opp = (WP, WN, WB, WR, WQ, WK)
+                for p in opp:
+                    if (board.bb[p] >> mv.to_sq) & 1:
+                        return p
+                return None
+
             def move_score(mv: Move) -> int:
                 score = 0
                 if is_tt_equal(tt_move, mv):
@@ -158,7 +199,12 @@ class SearchService:
                     board.ep_square is not None and mv.to_sq == board.ep_square
                 )
                 if is_capture:
-                    score += 500_000
+                    # MVV-LVA: prioritize higher value victims and lower value attackers
+                    att = attacker_piece_index(mv)
+                    vic = victim_piece_index(mv)
+                    v = piece_vals[vic] if vic is not None else 0
+                    a = piece_vals[att] if att is not None else 0
+                    score += 600_000 + (v * 10 - a)
                 # killer moves (quiet only)
                 if not is_capture:
                     for idx, km in enumerate(killer_list[:2]):
