@@ -1095,3 +1095,26 @@ class Board:
         if not moved:
             return None
         return bb
+
+    # --- Status helpers ---
+    def in_check(self, side: Optional[str] = None) -> bool:
+        """Return True if `side` (default: current side to move) is in check."""
+        s = self.side_to_move if side is None else side
+        if s not in ("w", "b"):
+            raise ValueError("side must be 'w' or 'b'")
+        if s == "w":
+            king_bb = self.bb[WK]
+            if king_bb == 0:
+                return False
+            ksq = (king_bb & -king_bb).bit_length() - 1
+            return self._is_attacked(ksq, by_white=False)
+        else:
+            king_bb = self.bb[BK]
+            if king_bb == 0:
+                return False
+            ksq = (king_bb & -king_bb).bit_length() - 1
+            return self._is_attacked(ksq, by_white=True)
+
+    def has_legal_moves(self) -> bool:
+        """Return True if the side to move has at least one legal move."""
+        return bool(self.generate_legal_moves())

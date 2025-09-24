@@ -48,3 +48,20 @@ class Game:
             raise ValueError("no moves to undo")
         last = self.move_stack.pop()
         self.board.unmake_move(last)
+
+    # --- State flags for protocol ---
+    def in_check(self) -> bool:
+        return self.board.in_check()
+
+    def checkmate(self) -> bool:
+        return (not self.board.has_legal_moves()) and self.board.in_check()
+
+    def stalemate(self) -> bool:
+        return (not self.board.has_legal_moves()) and (not self.board.in_check())
+
+    def is_draw(self) -> bool:
+        # Simple draw detection: 50-move rule or stalemate
+        return self.board.halfmove_clock >= 100 or self.stalemate()
+
+    def move_history_uci(self) -> List[str]:
+        return [m.to_uci() for m in self.move_stack]

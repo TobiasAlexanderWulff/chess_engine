@@ -39,3 +39,5 @@ def test_undo_restores_prior_state() -> None:
     state = r_undo.json()
     assert state["fen"] == start_fen
     assert isinstance(state["legal_moves"], list) and state["legal_moves"]
+    assert state["last_move"] is None
+    assert state["move_history"] == []

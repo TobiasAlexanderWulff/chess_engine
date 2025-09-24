@@ -68,6 +68,13 @@ def test_move_endpoint_applies_and_returns_state() -> None:
     assert " b " in state["fen"]
     assert " e3 " in state["fen"]
     assert isinstance(state["legal_moves"], list) and state["legal_moves"]
+    # New state fields
+    assert state["last_move"] == "e2e4"
+    assert state["move_history"] == ["e2e4"]
+    assert isinstance(state["in_check"], bool)
+    assert isinstance(state["checkmate"], bool)
+    assert isinstance(state["stalemate"], bool)
+    assert isinstance(state["draw"], bool)
 
 
 def test_move_endpoint_illegal_returns_400() -> None:

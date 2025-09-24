@@ -45,6 +45,12 @@ class GameState(BaseModel):
     game_id: str
     fen: str
     legal_moves: list[str]
+    in_check: bool
+    checkmate: bool
+    stalemate: bool
+    draw: bool
+    last_move: Optional[str]
+    move_history: list[str]
 
 
 def create_app() -> FastAPI:
@@ -80,6 +86,12 @@ def create_app() -> FastAPI:
             game_id=game_id,
             fen=game.to_fen(),
             legal_moves=[m.to_uci() for m in game.legal_moves()],
+            in_check=game.in_check(),
+            checkmate=game.checkmate(),
+            stalemate=game.stalemate(),
+            draw=game.is_draw(),
+            last_move=game.move_history_uci()[-1] if game.move_history_uci() else None,
+            move_history=game.move_history_uci(),
         )
 
     @app.post("/api/games/{game_id}/position", response_model=GameState)
@@ -94,6 +106,12 @@ def create_app() -> FastAPI:
             game_id=game_id,
             fen=game.to_fen(),
             legal_moves=[m.to_uci() for m in game.legal_moves()],
+            in_check=game.in_check(),
+            checkmate=game.checkmate(),
+            stalemate=game.stalemate(),
+            draw=game.is_draw(),
+            last_move=game.move_history_uci()[-1] if game.move_history_uci() else None,
+            move_history=game.move_history_uci(),
         )
 
     @app.post("/api/games/{game_id}/move", response_model=GameState)
@@ -113,6 +131,12 @@ def create_app() -> FastAPI:
             game_id=game_id,
             fen=game.to_fen(),
             legal_moves=[m.to_uci() for m in game.legal_moves()],
+            in_check=game.in_check(),
+            checkmate=game.checkmate(),
+            stalemate=game.stalemate(),
+            draw=game.is_draw(),
+            last_move=game.move_history_uci()[-1] if game.move_history_uci() else None,
+            move_history=game.move_history_uci(),
         )
 
     @app.post("/api/games/{game_id}/search")
@@ -155,6 +179,12 @@ def create_app() -> FastAPI:
             game_id=game_id,
             fen=game.to_fen(),
             legal_moves=[m.to_uci() for m in game.legal_moves()],
+            in_check=game.in_check(),
+            checkmate=game.checkmate(),
+            stalemate=game.stalemate(),
+            draw=game.is_draw(),
+            last_move=game.move_history_uci()[-1] if game.move_history_uci() else None,
+            move_history=game.move_history_uci(),
         )
 
     return app
