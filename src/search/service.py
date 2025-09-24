@@ -223,6 +223,18 @@ class SearchService:
             best_move: Optional[Move] = None
 
             for m in legal:
+                # Simple SEE gate: prune clearly losing captures at shallow depths
+                # Only consider captures, and only when remaining depth is small
+                is_capture = ((occ_opp >> m.to_sq) & 1) == 1 or (
+                    board.ep_square is not None and m.to_sq == board.ep_square
+                )
+                if is_capture and d <= 2:
+                    att = attacker_piece_index(m)
+                    vic = victim_piece_index(m)
+                    v = piece_vals[vic] if vic is not None else 0
+                    a = piece_vals[att] if att is not None else 0
+                    if (v - a) < 0:
+                        continue
                 board.make_move(m)
                 child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
                 score = -child_score
