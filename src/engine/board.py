@@ -648,8 +648,7 @@ class Board:
     def make_move(self, move: Move) -> None:
         """Apply `move` to this board in-place with reversible state.
 
-        Supports: normal moves, captures, promotions, and en passant.
-        Castling moves are not generated yet and thus not handled here.
+        Supports: normal moves, captures, promotions, en passant, and castling.
         """
         from_sq, to_sq = move.from_sq, move.to_sq
         is_white = self.side_to_move == "w"
