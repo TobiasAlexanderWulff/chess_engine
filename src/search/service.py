@@ -21,6 +21,8 @@ class SearchResult:
     tt_hits: int
     fail_high: int
     fail_low: int
+    tt_probes: int
+    re_searches: int
     depth: int
     time_ms: int
 
@@ -578,6 +580,7 @@ class SearchService:
         completed_depth = 0
         fail_high = 0
         fail_low = 0
+        re_searches = 0
 
         BASE_WINDOW = 50  # aspiration window in centipawns
 
@@ -602,10 +605,12 @@ class SearchService:
                     break
                 if score <= alpha:
                     fail_low += 1
+                    re_searches += 1
                     window *= 2
                     alpha = max(score - window, -INF)
                 elif score >= beta:
                     fail_high += 1
+                    re_searches += 1
                     window *= 2
                     beta = min(score + window, INF)
                 else:
@@ -638,6 +643,8 @@ class SearchService:
             tt_hits=tt_hits,
             fail_high=fail_high,
             fail_low=fail_low,
+            tt_probes=tt_probes,
+            re_searches=re_searches,
             depth=completed_depth,
             time_ms=int((time.perf_counter() - start) * 1000),
         )

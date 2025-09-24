@@ -160,6 +160,8 @@ def create_app() -> FastAPI:
             "tt_hits": res.tt_hits,
             "fail_high": res.fail_high,
             "fail_low": res.fail_low,
+            "tt_probes": res.tt_probes,
+            "re_searches": res.re_searches,
             "depth": res.depth,
             "time_ms": res.time_ms,
         }

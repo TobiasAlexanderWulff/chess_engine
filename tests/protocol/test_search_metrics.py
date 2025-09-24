@@ -22,5 +22,8 @@ def test_search_response_includes_metrics() -> None:
     assert "nodes" in data and isinstance(data["nodes"], int) and data["nodes"] >= 0
     assert "qnodes" in data and isinstance(data["qnodes"], int) and data["qnodes"] >= 0
     assert "tt_hits" in data and isinstance(data["tt_hits"], int) and data["tt_hits"] >= 0
+    assert "tt_probes" in data and isinstance(data["tt_probes"], int) and data["tt_probes"] >= 0
+    # probes should be >= hits
+    assert data["tt_probes"] >= data["tt_hits"]
     # qnodes should not exceed nodes
     assert data["qnodes"] <= data["nodes"]

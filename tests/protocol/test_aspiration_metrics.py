@@ -20,3 +20,8 @@ def test_search_response_includes_aspiration_fail_counts() -> None:
     data = r_search.json()
     assert "fail_high" in data and isinstance(data["fail_high"], int) and data["fail_high"] >= 0
     assert "fail_low" in data and isinstance(data["fail_low"], int) and data["fail_low"] >= 0
+    assert (
+        "re_searches" in data and isinstance(data["re_searches"], int) and data["re_searches"] >= 0
+    )
+    # re_searches should be at least fail_high + fail_low? It equals number of fails
+    assert data["re_searches"] == data["fail_high"] + data["fail_low"]
