@@ -429,8 +429,12 @@ class SearchService:
             best_line: List[Move] = []
             alpha_orig = alpha
             best_move: Optional[Move] = None
+            in_check_now = board.in_check()
+            # Stand-pat for futility thresholds (side to move perspective)
+            base_eval = evaluate(board)
+            stand_pat = base_eval if board.side_to_move == "w" else -base_eval
 
-            for m in legal:
+            for idx, m in enumerate(legal):
                 # Simple SEE gate: prune clearly losing captures at shallow depths
                 # Only consider captures, and only when remaining depth is small
                 is_capture = ((occ_opp >> m.to_sq) & 1) == 1 or (
@@ -439,8 +443,42 @@ class SearchService:
                 if is_capture and d <= 2:
                     if see(m) < 0:
                         continue
+                # Futility pruning at the horizon (very conservative)
+                # Skip quiet moves unlikely to raise alpha at depth 1
+                if (
+                    d == 1
+                    and not in_check_now
+                    and not is_capture
+                    and m.promotion is None
+                    and (stand_pat + 100) <= alpha
+                ):
+                    # Guard: if the move gives check, do not prune
+                    board.make_move(m)
+                    gives_check = board.in_check()
+                    board.unmake_move(m)
+                    if not gives_check:
+                        continue
+
                 board.make_move(m)
-                child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
+
+                # Late Move Reductions for quiet, non-tactical late moves
+                r = 0
+                if (
+                    d >= 3
+                    and not in_check_now
+                    and not is_capture
+                    and m.promotion is None
+                    and idx >= 4
+                ):
+                    r = 1
+                    child_score_reduced, child_pv = negamax(d - 1 - r, -beta, -alpha, ply + 1)
+                    # If it improves, re-search at full depth (verification)
+                    if child_score_reduced > alpha:
+                        child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
+                    else:
+                        child_score = child_score_reduced
+                else:
+                    child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
                 score = -child_score
                 board.unmake_move(m)
 
