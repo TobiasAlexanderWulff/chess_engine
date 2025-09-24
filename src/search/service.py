@@ -28,7 +28,8 @@ class SearchService:
     """
 
     def search(self, game: Game, depth: int = 1, movetime_ms: Optional[int] = None) -> SearchResult:
-        # Deterministic negamax alpha-beta with simple material evaluation and a transposition table.
+        # Deterministic negamax alpha-beta with quiescence, simple material evaluation,
+        # and a transposition table. Includes terminal scoring (mate/stalemate/draw).
         board = game.board
         nodes = 0
 
@@ -43,6 +44,7 @@ class SearchService:
         tt: Dict[int, TTEntry] = {}
 
         INF = 10_000_000
+        MATE_SCORE = 1_000_000  # mate scores are within +/- MATE_SCORE window
 
         def probe(alpha: int, beta: int, d: int) -> Optional[Tuple[int, Optional[Move]]]:
             e = tt.get(board.zobrist_hash)
@@ -283,10 +285,23 @@ class SearchService:
             nodes += 1
 
             # Leaf or terminal
-            if d == 0 or out_of_time():
+            if out_of_time():
                 base = evaluate(board)
                 score = base if board.side_to_move == "w" else -base
                 return score, []
+
+            # No legal moves: mate or stalemate
+            legal_precheck = board.generate_legal_moves()
+            if not legal_precheck:
+                if board.in_check():
+                    # Checkmated: distance-to-mate scores prefer quicker mates
+                    return -MATE_SCORE + ply, []
+                # Stalemate
+                return 0, []
+
+            # Depth horizon: switch to quiescence
+            if d == 0:
+                return qsearch(alpha, beta, ply)
 
             # TT probe
             hit = probe(alpha, beta, d)
@@ -304,10 +319,7 @@ class SearchService:
                 # Otherwise continue but prefer the stored move for ordering
                 tt_move = m
 
-            legal = board.generate_legal_moves()
-            if not legal:
-                # No moves: treat as draw (0). Mate/stalemate detection omitted for simplicity.
-                return 0, []
+            legal = legal_precheck
 
             # Move ordering: TT, captures, killers, history
             # Precompute opponent occupancy to detect captures cheaply
@@ -446,6 +458,107 @@ class SearchService:
             store(d, best_score, alpha_orig, beta, best_move)
             return best_score, best_line
 
+        def qsearch(alpha: int, beta: int, ply: int) -> Tuple[int, List[Move]]:
+            nonlocal nodes
+            nodes += 1
+
+            # Stand-pat evaluation
+            stand_pat = evaluate(board)
+            stand_pat = stand_pat if board.side_to_move == "w" else -stand_pat
+
+            # Immediate terminal states (no legal moves)
+            legal = board.generate_legal_moves()
+            if not legal:
+                if board.in_check():
+                    return -MATE_SCORE + ply, []
+                return 0, []
+
+            # If not in check, we can consider stand-pat cutoff
+            if not board.in_check():
+                if stand_pat >= beta:
+                    return stand_pat, []
+                if stand_pat > alpha:
+                    alpha = stand_pat
+
+            # Precompute opponent occupancy to filter captures
+            if board.side_to_move == "w":
+                occ_opp = (
+                    board.bb[6]
+                    | board.bb[7]
+                    | board.bb[8]
+                    | board.bb[9]
+                    | board.bb[10]
+                    | board.bb[11]
+                )
+            else:
+                occ_opp = (
+                    board.bb[0]
+                    | board.bb[1]
+                    | board.bb[2]
+                    | board.bb[3]
+                    | board.bb[4]
+                    | board.bb[5]
+                )
+
+            # Filter to captures (and en passant)
+            captures: List[Move] = []
+            for m in legal:
+                is_capture = ((occ_opp >> m.to_sq) & 1) == 1 or (
+                    board.ep_square is not None and m.to_sq == board.ep_square
+                )
+                if is_capture or board.in_check():
+                    captures.append(m)
+
+            if not captures:
+                return alpha, []
+
+            # Use simple MVV-LVA ordering for captures
+            piece_vals = [100, 320, 330, 500, 900, 20000] * 2
+
+            def attacker_piece_index(mv: Move) -> Optional[int]:
+                if board.side_to_move == "w":
+                    own = (WP, WN, WB, WR, WQ, WK)
+                else:
+                    own = (BP, BN, BB, BR, BQ, BK)
+                for p in own:
+                    if (board.bb[p] >> mv.from_sq) & 1:
+                        return p
+                return None
+
+            def victim_piece_index(mv: Move) -> Optional[int]:
+                if board.ep_square is not None and mv.to_sq == board.ep_square:
+                    return BP if board.side_to_move == "w" else WP
+                if board.side_to_move == "w":
+                    opp = (BP, BN, BB, BR, BQ, BK)
+                else:
+                    opp = (WP, WN, WB, WR, WQ, WK)
+                for p in opp:
+                    if (board.bb[p] >> mv.to_sq) & 1:
+                        return p
+                return None
+
+            def cap_score(mv: Move) -> int:
+                att = attacker_piece_index(mv)
+                vic = victim_piece_index(mv)
+                v = piece_vals[vic] if vic is not None else 0
+                a = piece_vals[att] if att is not None else 0
+                return v * 10 - a
+
+            captures.sort(key=cap_score, reverse=True)
+
+            best_line: List[Move] = []
+            for m in captures:
+                board.make_move(m)
+                score, pv = qsearch(-beta, -alpha, ply + 1)
+                score = -score
+                board.unmake_move(m)
+                if score > alpha:
+                    alpha = score
+                    best_line = [m] + pv
+                    if alpha >= beta:
+                        break
+            return alpha, best_line
+
         # Iterative deepening from 1..depth with basic time control
         last_score = 0
         last_pv: List[Move] = []
@@ -460,10 +573,20 @@ class SearchService:
         best_move = (
             last_pv[0] if last_pv else (game.legal_moves()[0] if game.legal_moves() else None)
         )
+
+        # Mate distance extraction
+        mate_in: Optional[int] = None
+        if abs(last_score) >= MATE_SCORE - 128:  # within mate window
+            # Convert to plies to mate from root.
+            if last_score > 0:
+                mate_in = (MATE_SCORE - last_score + 1) // 2
+            else:
+                mate_in = -((MATE_SCORE + last_score + 1) // 2)
+
         return SearchResult(
             best_move=best_move,
-            score_cp=last_score,
-            mate_in=None,
+            score_cp=last_score if mate_in is None else None,
+            mate_in=mate_in,
             pv=last_pv,
             nodes=nodes,
             depth=completed_depth,

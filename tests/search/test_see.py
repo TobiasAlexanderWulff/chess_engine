@@ -39,3 +39,19 @@ def test_see_prunes_xray_losing_capture() -> None:
     res = service.search(game, depth=1)
     assert res.best_move is not None
     assert res.best_move.to_uci() != "e4d5"
+
+
+def test_pv_is_deterministic_at_fixed_depth() -> None:
+    # Starting position; PV at depth 2 should be deterministic across runs
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    game = Game.from_fen(fen)
+    service = SearchService()
+
+    res1 = service.search(game, depth=2)
+    # Recreate game to ensure a clean state
+    game2 = Game.from_fen(fen)
+    res2 = service.search(game2, depth=2)
+
+    pv1 = [m.to_uci() for m in res1.pv]
+    pv2 = [m.to_uci() for m in res2.pv]
+    assert pv1 == pv2
