@@ -144,9 +144,16 @@ def create_app() -> FastAPI:
         game = _require_game(store, game_id)
         service = SearchService()
         res = service.search(game, depth=req.depth or 1, movetime_ms=req.movetime_ms)
+        # Score object: either cp or mate (UCI-style)
+        score: Dict[str, Any]
+        if res.mate_in is not None:
+            score = {"mate": res.mate_in}
+        else:
+            score = {"cp": res.score_cp} if res.score_cp is not None else None  # type: ignore[assignment]
+
         return {
             "best_move": res.best_move.to_uci() if res.best_move else None,
-            "score": {"cp": res.score_cp} if res.score_cp is not None else None,
+            "score": score,
             "pv": [m.to_uci() for m in res.pv],
             "nodes": res.nodes,
             "depth": res.depth,
