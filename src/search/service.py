@@ -225,21 +225,7 @@ class SearchService:
                 if vp is None:
                     return 0
                 victim_piece = vp
-            victim_value = 100
-            piece_vals = [
-                100,
-                320,
-                330,
-                500,
-                900,
-                20000,
-                100,
-                320,
-                330,
-                500,
-                900,
-                20000,
-            ]
+            piece_vals = [100, 320, 330, 500, 900, 20000, 100, 320, 330, 500, 900, 20000]
             victim_value = piece_vals[victim_piece]
 
             # Determine initial attacker piece type (handle promotion)
@@ -270,6 +256,10 @@ class SearchService:
             removed_mask |= 1 << from_sq
             occ |= 1 << to_sq
 
+            # Current occupant after first capture is the attacking piece
+            attacker_val = piece_vals[attacker_piece]
+            curr_occ_val = attacker_val
+
             color_white = not side_white
             depth = 1
             while True:
@@ -294,17 +284,19 @@ class SearchService:
                     mask ^= lsb
                 if best_sq == -1 or best_piece is None:
                     break
-                # forward recurrence
-                gain.append(best_val - gain[-1])
+                # forward recurrence: captured piece is current occupant value
+                gain.append(curr_occ_val - gain[-1])
                 # update occ: remove attacker from its square; target stays occupied
                 occ &= ~(1 << best_sq)
                 removed_mask |= 1 << best_sq
+                # new occupant becomes this capturing piece
+                curr_occ_val = piece_vals[best_piece]
                 color_white = not color_white
                 depth += 1
 
             # Backward propagation to compute optimal outcome
             for i in range(len(gain) - 2, -1, -1):
-                gain[i] = max(-gain[i], gain[i + 1])
+                gain[i] = -max(-gain[i], gain[i + 1])
             return gain[0]
 
         def negamax(d: int, alpha: int, beta: int, ply: int = 0) -> Tuple[int, List[Move]]:
