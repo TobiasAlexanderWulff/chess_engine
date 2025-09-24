@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List
 
 from .board import Board
 from .move import Move
@@ -16,6 +16,7 @@ class Game:
 
     board: Board
     move_stack: List[Move] = field(default_factory=list)
+    repetition: Dict[int, int] = field(default_factory=dict)
 
     @classmethod
     def new(cls) -> "Game":
@@ -27,6 +28,12 @@ class Game:
 
     def to_fen(self) -> str:
         return self.board.to_fen()
+
+    def __post_init__(self) -> None:
+        # Seed repetition with current position
+        h = getattr(self.board, "zobrist_hash", None)
+        if h is not None:
+            self.repetition[h] = self.repetition.get(h, 0) + 1
 
     def legal_moves(self) -> List[Move]:
         return self.board.generate_legal_moves()
@@ -42,10 +49,19 @@ class Game:
         # Make move in-place and record for undo
         self.board.make_move(move)
         self.move_stack.append(move)
+        # Update repetition with new hash
+        h = self.board.zobrist_hash
+        self.repetition[h] = self.repetition.get(h, 0) + 1
 
     def undo_move(self) -> None:
         if not self.move_stack:
             raise ValueError("no moves to undo")
+        # Decrement count for current position
+        curr = self.board.zobrist_hash
+        if curr in self.repetition:
+            self.repetition[curr] -= 1
+            if self.repetition[curr] <= 0:
+                del self.repetition[curr]
         last = self.move_stack.pop()
         self.board.unmake_move(last)
 
@@ -60,8 +76,13 @@ class Game:
         return (not self.board.has_legal_moves()) and (not self.board.in_check())
 
     def is_draw(self) -> bool:
-        # Simple draw detection: 50-move rule or stalemate
-        return self.board.halfmove_clock >= 100 or self.stalemate()
+        # Draw by 50-move rule, stalemate, or threefold repetition
+        if self.board.halfmove_clock >= 100:
+            return True
+        if self.stalemate():
+            return True
+        count = self.repetition.get(self.board.zobrist_hash, 0)
+        return count >= 3
 
     def move_history_uci(self) -> List[str]:
         return [m.to_uci() for m in self.move_stack]

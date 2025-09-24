@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from .zobrist import ZOBRIST, compute_hash_from_scratch
+
 from .move import Move, square_to_str, str_to_square
 
 
@@ -55,6 +57,8 @@ class Board:
     fullmove_number: int
     # internal move history for make/unmake (Plan 3)
     _history: List[Tuple] = field(default_factory=list, repr=False)
+    # incremental zobrist hash of current position
+    zobrist_hash: int = 0
 
     @classmethod
     def startpos(cls) -> "Board":
@@ -132,7 +136,7 @@ class Board:
         if halfmove_clock < 0 or fullmove_number <= 0:
             raise ValueError("invalid move counters in FEN")
 
-        return cls(
+        board = cls(
             bb=bb,
             side_to_move=stm,
             castling=castling,
@@ -140,6 +144,9 @@ class Board:
             halfmove_clock=halfmove_clock,
             fullmove_number=fullmove_number,
         )
+        # Initialize zobrist hash deterministically
+        board.zobrist_hash = compute_hash_from_scratch(board)
+        return board
 
     def to_fen(self) -> str:
         # Piece placement
@@ -640,6 +647,7 @@ class Board:
             halfmove_clock=self.halfmove_clock,
             fullmove_number=self.fullmove_number,
         )
+        new_board.zobrist_hash = self.zobrist_hash
         # Apply move in-place on the clone
         new_board.make_move(move)
         return new_board
@@ -692,6 +700,7 @@ class Board:
             self.castling,
             self.halfmove_clock,
             self.fullmove_number,
+            self.zobrist_hash,
         )
         self._history.append(prev_state)
 
@@ -704,6 +713,10 @@ class Board:
         # Update fullmove number after black moves
         if not is_white:
             self.fullmove_number += 1
+
+        # Save previous state for hash toggles
+        prev_castling = self.castling
+        prev_ep = self.ep_square
 
         # Update castling rights if king or rook moves/captured
         self._update_castling_rights_on_move(moved_piece, from_sq, to_sq, captured_piece)
@@ -759,7 +772,60 @@ class Board:
                     self.bb[BR] |= 1 << 59
             self.bb[moved_piece] |= 1 << to_sq
 
+        # Zobrist hash incremental update
+        h = self.zobrist_hash
+        # Remove previous EP
+        if prev_ep is not None:
+            h ^= ZOBRIST.ep_file[prev_ep % 8]
+        # Piece-square toggles
+        h ^= ZOBRIST.piece_square[moved_piece][from_sq]
+        # Remove captured piece
+        if captured_piece is not None:
+            cap_sq = ep_capture_sq if ep_capture_sq is not None else to_sq
+            h ^= ZOBRIST.piece_square[captured_piece][cap_sq]
+        # Place moved/promotion and handle rook movement in castling
+        if moved_piece == WP and move.promotion:
+            promo_map = {"q": WQ, "r": WR, "b": WB, "n": WN}
+            h ^= ZOBRIST.piece_square[promo_map[move.promotion]][to_sq]
+        elif moved_piece == BP and move.promotion:
+            promo_map = {"q": BQ, "r": BR, "b": BB, "n": BN}
+            h ^= ZOBRIST.piece_square[promo_map[move.promotion]][to_sq]
+        else:
+            h ^= ZOBRIST.piece_square[moved_piece][to_sq]
+            if moved_piece == WK and abs(to_sq - from_sq) == 2:
+                if to_sq == 6:  # white kingside
+                    h ^= ZOBRIST.piece_square[WR][7]
+                    h ^= ZOBRIST.piece_square[WR][5]
+                else:  # white queenside
+                    h ^= ZOBRIST.piece_square[WR][0]
+                    h ^= ZOBRIST.piece_square[WR][3]
+            elif moved_piece == BK and abs(to_sq - from_sq) == 2:
+                if to_sq == 62:  # black kingside
+                    h ^= ZOBRIST.piece_square[BR][63]
+                    h ^= ZOBRIST.piece_square[BR][61]
+                else:  # black queenside
+                    h ^= ZOBRIST.piece_square[BR][56]
+                    h ^= ZOBRIST.piece_square[BR][59]
+
+        # Add new EP if any
+        if self.ep_square is not None:
+            h ^= ZOBRIST.ep_file[self.ep_square % 8]
+
+        # Castling rights toggles: out old, in new
+        order = "KQkq"
+        for i, ch in enumerate(order):
+            if ch in prev_castling:
+                h ^= ZOBRIST.castling[i]
+        for i, ch in enumerate(order):
+            if ch in self.castling:
+                h ^= ZOBRIST.castling[i]
+
         # Toggle side to move
+        h ^= ZOBRIST.side_to_move
+
+        self.zobrist_hash = h & 0xFFFFFFFFFFFFFFFF
+
+        # Toggle side to move (state)
         self.side_to_move = "b" if is_white else "w"
 
     def unmake_move(self, move: Move) -> None:
@@ -780,6 +846,7 @@ class Board:
             prev_castling,
             prev_halfmove,
             prev_fullmove,
+            prev_hash,
         ) = self._history.pop()
 
         from_sq, to_sq = move.from_sq, move.to_sq
@@ -792,6 +859,7 @@ class Board:
         self.castling = prev_castling
         self.halfmove_clock = prev_halfmove
         self.fullmove_number = prev_fullmove
+        self.zobrist_hash = prev_hash
 
         # Undo piece placement
         # Remove piece from destination (or promoted piece) and place back on from_sq
