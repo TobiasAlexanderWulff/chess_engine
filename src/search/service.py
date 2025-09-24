@@ -127,8 +127,7 @@ class SearchService:
                     if o <= 63 and ((board.bb[BP] >> o) & 1) and not ((removed_mask >> o) & 1):
                         attackers |= 1 << o
             # Knights
-            deltas = [(-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)]
-            for df, dr in deltas:
+            for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
                 tf = f + df
                 tr = r + dr
                 if 0 <= tf < 8 and 0 <= tr < 8:
@@ -140,8 +139,7 @@ class SearchService:
                         if ((board.bb[BN] >> o) & 1) and not ((removed_mask >> o) & 1):
                             attackers |= 1 << o
             # King
-            kdeltas = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
-            for df, dr in kdeltas:
+            for df, dr in ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)):
                 tf = f + df
                 tr = r + dr
                 if 0 <= tf < 8 and 0 <= tr < 8:
@@ -153,7 +151,7 @@ class SearchService:
                         if ((board.bb[BK] >> o) & 1) and not ((removed_mask >> o) & 1):
                             attackers |= 1 << o
 
-            # Sliders: bishop-like and rook-like
+            # Sliders (bishops/rooks/queens)
             def ray_dirs(diagonals: bool) -> List[Tuple[int, int]]:
                 return (
                     [(-1, -1), (1, -1), (-1, 1), (1, 1)]
@@ -161,7 +159,7 @@ class SearchService:
                     else [(-1, 0), (1, 0), (0, -1), (0, 1)]
                 )
 
-            # Bishop/queen
+            # Bishop-like
             for df, dr in ray_dirs(True):
                 tf, tr = f, r
                 while True:
@@ -182,7 +180,7 @@ class SearchService:
                             ):
                                 attackers |= 1 << o
                         break
-            # Rook/queen
+            # Rook-like
             for df, dr in ray_dirs(False):
                 tf, tr = f, r
                 while True:
@@ -206,7 +204,7 @@ class SearchService:
             return attackers
 
         def see(move: Move) -> int:
-            # Only intended for captures
+            # Only for captures; returns net material result (centipawns)
             to_sq = move.to_sq
             from_sq = move.from_sq
             side_white = board.side_to_move == "w"
@@ -216,7 +214,6 @@ class SearchService:
                 occ |= b
             # Identify victim
             if board.ep_square is not None and move.to_sq == board.ep_square:
-                # En passant: victim is pawn behind the target square
                 victim_sq = to_sq - 8 if side_white else to_sq + 8
                 victim_piece = BP if side_white else WP
             else:
@@ -225,51 +222,35 @@ class SearchService:
                 if vp is None:
                     return 0
                 victim_piece = vp
+
             piece_vals = [100, 320, 330, 500, 900, 20000, 100, 320, 330, 500, 900, 20000]
             victim_value = piece_vals[victim_piece]
 
             # Determine initial attacker piece type (handle promotion)
-            if side_white:
-                if move.promotion:
-                    promo_map = {"q": WQ, "r": WR, "b": WB, "n": WN}
-                    attacker_piece = promo_map.get(move.promotion, WP)
-                else:
-                    attacker_piece = piece_on_square(from_sq)
-            else:
-                if move.promotion:
-                    promo_map = {"q": BQ, "r": BR, "b": BB, "n": BN}
-                    attacker_piece = promo_map.get(move.promotion, BP)
-                else:
-                    attacker_piece = piece_on_square(from_sq)
+            attacker_piece = piece_on_square(from_sq)
             if attacker_piece is None:
                 return 0
 
             gain: List[int] = [victim_value]
-
-            # Update occupancy for first capture
             removed_mask = 0
-            # Remove victim from board
+            # Remove victim
             occ &= ~(1 << victim_sq)
             removed_mask |= 1 << victim_sq
-            # Remove attacker from origin and occupy target
+            # Remove attacker from origin; occupy target
             occ &= ~(1 << from_sq)
             removed_mask |= 1 << from_sq
             occ |= 1 << to_sq
 
-            # Current occupant after first capture is the attacking piece
-            attacker_val = piece_vals[attacker_piece]
-            curr_occ_val = attacker_val
-
+            curr_occ_val = piece_vals[attacker_piece]
             color_white = not side_white
-            depth = 1
             while True:
                 atk_mask = attackers_to_square(to_sq, occ, color_white, removed_mask)
                 if atk_mask == 0:
                     break
-                # choose least valuable attacker
+                # Choose least valuable attacker
                 best_sq = -1
-                best_val = 10**9
                 best_piece = None
+                best_val = 10**9
                 mask = atk_mask
                 while mask:
                     lsb = mask & -mask
@@ -284,17 +265,15 @@ class SearchService:
                     mask ^= lsb
                 if best_sq == -1 or best_piece is None:
                     break
-                # forward recurrence: captured piece is current occupant value
                 gain.append(curr_occ_val - gain[-1])
-                # update occ: remove attacker from its square; target stays occupied
+                # Remove attacker from its square
                 occ &= ~(1 << best_sq)
                 removed_mask |= 1 << best_sq
-                # new occupant becomes this capturing piece
+                # New occupant is this capturing piece
                 curr_occ_val = piece_vals[best_piece]
                 color_white = not color_white
-                depth += 1
 
-            # Backward propagation to compute optimal outcome
+            # Backward propagation (standard swap list recurrence)
             for i in range(len(gain) - 2, -1, -1):
                 gain[i] = -max(-gain[i], gain[i + 1])
             return gain[0]
