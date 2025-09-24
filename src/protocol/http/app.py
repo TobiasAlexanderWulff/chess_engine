@@ -144,6 +144,19 @@ def create_app() -> FastAPI:
         nodes = perft_nodes(game.board, depth)
         return {"nodes": nodes}
 
+    @app.post("/api/games/{game_id}/undo", response_model=GameState)
+    async def undo(game_id: str) -> GameState:
+        game = _require_game(store, game_id)
+        try:
+            game.undo_move()
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return GameState(
+            game_id=game_id,
+            fen=game.to_fen(),
+            legal_moves=[m.to_uci() for m in game.legal_moves()],
+        )
+
     return app
 
 

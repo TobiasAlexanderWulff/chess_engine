@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 from .board import Board
@@ -15,6 +15,7 @@ class Game:
     """
 
     board: Board
+    move_stack: List[Move] = field(default_factory=list)
 
     @classmethod
     def new(cls) -> "Game":
@@ -31,5 +32,19 @@ class Game:
         return self.board.generate_legal_moves()
 
     def apply_move(self, move: Move) -> None:
-        # TODO: Update board with move (Plan 3)
-        self.board = self.board.apply(move)
+        # Validate legality
+        legal = self.board.generate_legal_moves()
+        if not any(
+            (m.from_sq == move.from_sq and m.to_sq == move.to_sq and m.promotion == move.promotion)
+            for m in legal
+        ):
+            raise ValueError("illegal move")
+        # Make move in-place and record for undo
+        self.board.make_move(move)
+        self.move_stack.append(move)
+
+    def undo_move(self) -> None:
+        if not self.move_stack:
+            raise ValueError("no moves to undo")
+        last = self.move_stack.pop()
+        self.board.unmake_move(last)
