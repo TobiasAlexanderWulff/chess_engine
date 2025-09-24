@@ -54,7 +54,9 @@ class SearchService:
                 return e.score, e.best
             return None
 
-        def store(depth_left: int, score: int, alpha_orig: int, beta: int, best: Optional[Move]) -> None:
+        def store(
+            depth_left: int, score: int, alpha_orig: int, beta: int, best: Optional[Move]
+        ) -> None:
             flag: str
             if score <= alpha_orig:
                 flag = "UPPER"
@@ -81,7 +83,11 @@ class SearchService:
                 score, m = hit
                 # We cannot recover PV reliably from table; use cutoff only
                 # If an EXACT value, return it directly
-                if d > 0 and tt.get(board.zobrist_hash, None) and tt[board.zobrist_hash].flag == "EXACT":
+                if (
+                    d > 0
+                    and tt.get(board.zobrist_hash, None)
+                    and tt[board.zobrist_hash].flag == "EXACT"
+                ):
                     return score, ([m] if m else [])
                 # Otherwise continue but prefer the stored move for ordering
                 tt_move = m
@@ -93,9 +99,20 @@ class SearchService:
 
             # Move ordering: prefer hash move first if present
             if tt_move is not None:
-                legal.sort(key=lambda mv: 0 if (mv == tt_move or (
-                    mv.from_sq == tt_move.from_sq and mv.to_sq == tt_move.to_sq and mv.promotion == tt_move.promotion
-                )) else 1)
+                legal.sort(
+                    key=lambda mv: (
+                        0
+                        if (
+                            mv == tt_move
+                            or (
+                                mv.from_sq == tt_move.from_sq
+                                and mv.to_sq == tt_move.to_sq
+                                and mv.promotion == tt_move.promotion
+                            )
+                        )
+                        else 1
+                    )
+                )
 
             best_score = -INF
             best_line: List[Move] = []
