@@ -27,3 +27,15 @@ def test_see_prefers_winning_capture_at_shallow_depth() -> None:
     res = service.search(game, depth=1)
     assert res.best_move is not None
     assert res.best_move.to_uci() == "d4c5"
+
+
+def test_see_prunes_xray_losing_capture() -> None:
+    # X-ray scenario: White bishop on e4 can capture a pawn on d5, but a black rook on d8
+    # recaptures along the d-file once the pawn is removed. This should be pruned.
+    fen = "3rk3/8/8/3p4/4B3/8/8/4K3 w - - 0 1"
+    game = Game.from_fen(fen)
+    service = SearchService()
+
+    res = service.search(game, depth=1)
+    assert res.best_move is not None
+    assert res.best_move.to_uci() != "e4d5"
