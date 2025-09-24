@@ -55,16 +55,19 @@ def test_set_position_validation_and_success() -> None:
     assert state["fen"] == start_fen
 
 
-def test_move_endpoint_unimplemented_returns_501() -> None:
+def test_move_endpoint_applies_and_returns_state() -> None:
     client = _client()
     r = client.post("/api/games")
     game_id = r.json()["game_id"]
 
     r_move = client.post(f"/api/games/{game_id}/move", json={"move": "e2e4"})
-    assert r_move.status_code == 501
-    err = r_move.json()["error"]
-    # 5xx maps to "internal_error" code in our envelope helper
-    assert err["code"] == "internal_error"
+    assert r_move.status_code == 200
+    state = r_move.json()
+    assert state["game_id"] == game_id
+    # Side to move should be black and ep square e3 present in FEN
+    assert " b " in state["fen"]
+    assert " e3 " in state["fen"]
+    assert isinstance(state["legal_moves"], list) and state["legal_moves"]
 
 
 def test_search_endpoint_shape() -> None:

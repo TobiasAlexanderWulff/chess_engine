@@ -617,8 +617,32 @@ class Board:
         return legal
 
     def apply(self, move: Move) -> "Board":
-        # To be implemented in Plan 3
-        raise NotImplementedError("move application not implemented yet")
+        """Return a new Board with `move` applied if legal.
+
+        - Validates the move against generated legal moves.
+        - Applies move using in-place mechanics on a cloned board.
+        - Keeps the original board unchanged (immutable API surface).
+        """
+        legal = self.generate_legal_moves()
+        # Compare by structural equality (from, to, promotion)
+        if not any(
+            (m.from_sq == move.from_sq and m.to_sq == move.to_sq and m.promotion == move.promotion)
+            for m in legal
+        ):
+            raise ValueError("illegal move")
+
+        # Clone board state
+        new_board = Board(
+            bb=list(self.bb),
+            side_to_move=self.side_to_move,
+            castling=self.castling,
+            ep_square=self.ep_square,
+            halfmove_clock=self.halfmove_clock,
+            fullmove_number=self.fullmove_number,
+        )
+        # Apply move in-place on the clone
+        new_board.make_move(move)
+        return new_board
 
     # --- Plan 3 scaffolding ---
     def make_move(self, move: Move) -> None:
