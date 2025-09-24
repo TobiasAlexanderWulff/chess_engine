@@ -108,9 +108,6 @@ def create_app() -> FastAPI:
         except ValueError:
             # Illegal move attempted
             raise HTTPException(status_code=400, detail="illegal move")
-        except NotImplementedError:
-            # Until move application exists (Plan 3), signal unimplemented
-            raise HTTPException(status_code=501, detail="move application not implemented")
 
         return GameState(
             game_id=game_id,
