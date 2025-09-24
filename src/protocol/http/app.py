@@ -158,6 +158,8 @@ def create_app() -> FastAPI:
             "nodes": res.nodes,
             "qnodes": res.qnodes,
             "tt_hits": res.tt_hits,
+            "fail_high": res.fail_high,
+            "fail_low": res.fail_low,
             "depth": res.depth,
             "time_ms": res.time_ms,
         }

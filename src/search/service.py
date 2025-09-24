@@ -19,6 +19,8 @@ class SearchResult:
     nodes: int
     qnodes: int
     tt_hits: int
+    fail_high: int
+    fail_low: int
     depth: int
     time_ms: int
 
@@ -574,9 +576,41 @@ class SearchService:
         last_score = 0
         last_pv: List[Move] = []
         completed_depth = 0
+        fail_high = 0
+        fail_low = 0
+
+        BASE_WINDOW = 50  # aspiration window in centipawns
+
+        def in_mate_window(sc: int) -> bool:
+            return abs(sc) >= MATE_SCORE - 512
+
         for d in range(1, max(1, depth) + 1):
-            score, pv = negamax(d, -INF, INF)
-            # If time ran out during this iteration, keep previous completed result
+            if d == 1 or in_mate_window(last_score):
+                score, pv = negamax(d, -INF, INF)
+                if time_up:
+                    break
+                last_score, last_pv, completed_depth = score, pv, d
+                continue
+
+            window = BASE_WINDOW
+            alpha = last_score - window
+            beta = last_score + window
+
+            while True:
+                score, pv = negamax(d, alpha, beta)
+                if time_up:
+                    break
+                if score <= alpha:
+                    fail_low += 1
+                    window *= 2
+                    alpha = max(score - window, -INF)
+                elif score >= beta:
+                    fail_high += 1
+                    window *= 2
+                    beta = min(score + window, INF)
+                else:
+                    break
+
             if time_up:
                 break
             last_score, last_pv, completed_depth = score, pv, d
@@ -602,6 +636,8 @@ class SearchService:
             nodes=nodes,
             qnodes=qnodes,
             tt_hits=tt_hits,
+            fail_high=fail_high,
+            fail_low=fail_low,
             depth=completed_depth,
             time_ms=int((time.perf_counter() - start) * 1000),
         )
