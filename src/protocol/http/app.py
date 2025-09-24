@@ -156,6 +156,8 @@ def create_app() -> FastAPI:
             "score": score,
             "pv": [m.to_uci() for m in res.pv],
             "nodes": res.nodes,
+            "qnodes": res.qnodes,
+            "tt_hits": res.tt_hits,
             "depth": res.depth,
             "time_ms": res.time_ms,
         }

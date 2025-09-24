@@ -17,6 +17,8 @@ class SearchResult:
     mate_in: Optional[int]
     pv: List[Move]
     nodes: int
+    qnodes: int
+    tt_hits: int
     depth: int
     time_ms: int
 
@@ -32,6 +34,9 @@ class SearchService:
         # and a transposition table. Includes terminal scoring (mate/stalemate/draw).
         board = game.board
         nodes = 0
+        qnodes = 0
+        tt_probes = 0
+        tt_hits = 0
 
         @dataclass
         class TTEntry:
@@ -47,14 +52,19 @@ class SearchService:
         MATE_SCORE = 1_000_000  # mate scores are within +/- MATE_SCORE window
 
         def probe(alpha: int, beta: int, d: int) -> Optional[Tuple[int, Optional[Move]]]:
+            nonlocal tt_probes, tt_hits
+            tt_probes += 1
             e = tt.get(board.zobrist_hash)
             if e is None or e.depth < d:
                 return None
             if e.flag == "EXACT":
+                tt_hits += 1
                 return e.score, e.best
             if e.flag == "LOWER" and e.score >= beta:
+                tt_hits += 1
                 return e.score, e.best
             if e.flag == "UPPER" and e.score <= alpha:
+                tt_hits += 1
                 return e.score, e.best
             return None
 
@@ -459,8 +469,9 @@ class SearchService:
             return best_score, best_line
 
         def qsearch(alpha: int, beta: int, ply: int) -> Tuple[int, List[Move]]:
-            nonlocal nodes
+            nonlocal nodes, qnodes
             nodes += 1
+            qnodes += 1
 
             # Stand-pat evaluation
             stand_pat = evaluate(board)
@@ -589,6 +600,8 @@ class SearchService:
             mate_in=mate_in,
             pv=last_pv,
             nodes=nodes,
+            qnodes=qnodes,
+            tt_hits=tt_hits,
             depth=completed_depth,
             time_ms=int((time.perf_counter() - start) * 1000),
         )
