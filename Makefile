@@ -2,7 +2,7 @@ PYTHON := python3
 DEPTH ?= 3
 FEN ?=
 
-.PHONY: build run test lint format
+.PHONY: build run test lint format format-check hooks hooks-run ci
 
 build:
 	@echo "Nothing to build (Python project)."
@@ -15,9 +15,24 @@ test:
 
 lint:
 	ruff check .
+	black --check .
 
 format:
 	black .
+
+format-check:
+	black --check .
+
+hooks:
+	pre-commit install --install-hooks
+
+hooks-run:
+	pre-commit run --all-files
+
+ci:
+	$(MAKE) build
+	$(MAKE) lint
+	$(MAKE) test
 
 .PHONY: perft
 perft:
