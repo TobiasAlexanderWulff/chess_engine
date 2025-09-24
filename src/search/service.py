@@ -58,6 +58,9 @@ class SearchService:
         def store(
             depth_left: int, score: int, alpha_orig: int, beta: int, best: Optional[Move]
         ) -> None:
+            # Avoid polluting TT if we are out of time
+            if movetime_ms is not None and time_up:
+                return
             flag: str
             if score <= alpha_orig:
                 flag = "UPPER"
@@ -70,6 +73,19 @@ class SearchService:
         # Killer moves (two per ply) and history heuristic
         killers: Dict[int, List[Move]] = {}
         history: Dict[Tuple[str, int, int], int] = {}
+
+        # Time control
+        start = time.perf_counter()
+        time_up = False
+
+        def out_of_time() -> bool:
+            nonlocal time_up
+            if movetime_ms is None or time_up:
+                return time_up
+            elapsed_ms = int((time.perf_counter() - start) * 1000)
+            if elapsed_ms >= movetime_ms:
+                time_up = True
+            return time_up
 
         def is_tt_equal(a: Optional[Move], b: Move) -> bool:
             return (
@@ -84,7 +100,7 @@ class SearchService:
             nodes += 1
 
             # Leaf or terminal
-            if d == 0:
+            if d == 0 or out_of_time():
                 base = evaluate(board)
                 score = base if board.side_to_move == "w" else -base
                 return score, []
@@ -194,18 +210,16 @@ class SearchService:
             store(d, best_score, alpha_orig, beta, best_move)
             return best_score, best_line
 
-        # Iterative deepening from 1..depth (simple stop after movetime if provided)
-        start = time.perf_counter()
+        # Iterative deepening from 1..depth with basic time control
         last_score = 0
         last_pv: List[Move] = []
         completed_depth = 0
         for d in range(1, max(1, depth) + 1):
             score, pv = negamax(d, -INF, INF)
+            # If time ran out during this iteration, keep previous completed result
+            if time_up:
+                break
             last_score, last_pv, completed_depth = score, pv, d
-            if movetime_ms is not None:
-                elapsed_ms = int((time.perf_counter() - start) * 1000)
-                if elapsed_ms >= movetime_ms:
-                    break
 
         best_move = (
             last_pv[0] if last_pv else (game.legal_moves()[0] if game.legal_moves() else None)
