@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
+import time
 
 from src.engine.game import Game
 from src.engine.move import Move
@@ -139,14 +140,28 @@ class SearchService:
             store(d, best_score, alpha_orig, beta, best_move)
             return best_score, best_line
 
-        score, pv = negamax(depth, -INF, INF)
-        best_move = pv[0] if pv else (game.legal_moves()[0] if game.legal_moves() else None)
+        # Iterative deepening from 1..depth (simple stop after movetime if provided)
+        start = time.perf_counter()
+        last_score = 0
+        last_pv: List[Move] = []
+        completed_depth = 0
+        for d in range(1, max(1, depth) + 1):
+            score, pv = negamax(d, -INF, INF)
+            last_score, last_pv, completed_depth = score, pv, d
+            if movetime_ms is not None:
+                elapsed_ms = int((time.perf_counter() - start) * 1000)
+                if elapsed_ms >= movetime_ms:
+                    break
+
+        best_move = (
+            last_pv[0] if last_pv else (game.legal_moves()[0] if game.legal_moves() else None)
+        )
         return SearchResult(
             best_move=best_move,
-            score_cp=score,
+            score_cp=last_score,
             mate_in=None,
-            pv=pv,
+            pv=last_pv,
             nodes=nodes,
-            depth=depth,
-            time_ms=0,
+            depth=completed_depth,
+            time_ms=int((time.perf_counter() - start) * 1000),
         )
