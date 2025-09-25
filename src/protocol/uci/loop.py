@@ -179,7 +179,8 @@ class UCIEngine:
             if eff_movetime is not None:
                 per_movetime = max(1, eff_movetime // max(1, self.multipv))
 
-            lines = []
+            lines: List[dict] = []
+            topk: List[dict] = []
             for mv in legal:
                 if self._stop_event.is_set() or gen != self._gen:
                     break
@@ -227,35 +228,41 @@ class UCIEngine:
                         "depth": child.depth + 1,
                         "seldepth": child.seldepth + 1,
                         "nodes": child.nodes,
+                        "time_ms": child.time_ms,
                         "tthits": child.tt_hits,
                         "hashfull": child.hashfull,
                         "key": key,
                     }
                 )
 
-            lines.sort(key=lambda x: x["key"], reverse=True)
-            topk = lines[: min(self.multipv, len(lines))]
+                # Stream current top-K after each child finishes
+                if self._stop_event.is_set() or gen != self._gen:
+                    self._search_running = False
+                    return
+                lines.sort(key=lambda x: x["key"], reverse=True)
+                topk = lines[: min(self.multipv, len(lines))]
+                for idx, ln in enumerate(topk, start=1):
+                    nodes = ln["nodes"]
+                    depth = ln["depth"]
+                    seldepth = ln["seldepth"]
+                    tthits = ln["tthits"]
+                    hashfull = ln["hashfull"]
+                    time_ms = max(0, ln.get("time_ms", 0))
+                    nps = int(nodes * 1000 / max(1, time_ms)) if time_ms > 0 else 0
+                    if ln["mate_in"] is not None:
+                        score = f"mate {ln['mate_in']}"
+                    else:
+                        score = f"cp {ln['score_cp'] or 0}"
+                    pv_str = " ".join(m.to_uci() for m in ln["pv"])
+                    write(
+                        f"info multipv {idx} depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} "
+                        f"score {score} pv {pv_str}"
+                    )
 
-            if self._stop_event.is_set() or gen != self._gen:
-                self._search_running = False
-                return
-
-            for idx, ln in enumerate(topk, start=1):
-                nodes = ln["nodes"]
-                depth = ln["depth"]
-                seldepth = ln["seldepth"]
-                tthits = ln["tthits"]
-                hashfull = ln["hashfull"]
-                if ln["mate_in"] is not None:
-                    score = f"mate {ln['mate_in']}"
-                else:
-                    score = f"cp {ln['score_cp'] or 0}"
-                pv_str = " ".join(m.to_uci() for m in ln["pv"])
-                write(
-                    f"info multipv {idx} depth {depth} seldepth {seldepth} nodes {nodes} tthits {tthits} hashfull {hashfull} "
-                    f"score {score} pv {pv_str}"
-                )
-
+            # Ensure topk reflects final ordering
+            if not topk:
+                lines.sort(key=lambda x: x["key"], reverse=True)
+                topk = lines[: min(self.multipv, len(lines))]
             bestmove = topk[0]["pv"][0].to_uci() if topk else "(none)"
             write(f"bestmove {bestmove}")
             self._search_running = False
