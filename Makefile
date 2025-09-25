@@ -10,6 +10,9 @@ build:
 run:
 	uvicorn src.protocol.http.app:create_app --factory --host 0.0.0.0 --port 8000 --reload
 
+uci:
+	$(PYTHON) -m src.cli.uci
+
 test:
 	$(PYTHON) -m pytest -q
 
