@@ -58,6 +58,8 @@ class SearchService:
         board = game.board
         nodes = 0
         qnodes = 0
+        # Repetition tracking: seed counts from the game so threefold inside search is detected
+        rep_counts: Dict[int, int] = dict(getattr(game, "repetition", {}))
         tt_probes = 0
         tt_hits = 0
         tt_exact_hits = 0
@@ -361,6 +363,14 @@ class SearchService:
                 score = base if board.side_to_move == "w" else -base
                 return score, []
 
+            # 50-move rule
+            if board.halfmove_clock >= 100:
+                return 0, []
+
+            # Threefold repetition (counts include current game history)
+            if rep_counts.get(board.zobrist_hash, 0) >= 3:
+                return 0, []
+
             # In-check extension: extend search by 1 ply when side to move is in check
             in_check_now = board.in_check()
             if d > 0 and in_check_now:
@@ -551,6 +561,9 @@ class SearchService:
                         continue
 
                 board.make_move(m)
+                # Increment repetition count for child position
+                child_hash = board.zobrist_hash
+                rep_counts[child_hash] = rep_counts.get(child_hash, 0) + 1
 
                 # Principal Variation Search (PVS)
                 if not enable_pvs or idx == 0:
@@ -577,6 +590,12 @@ class SearchService:
                         child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
                         score = -child_score
                 board.unmake_move(m)
+                # Decrement repetition count for child
+                cnt = rep_counts.get(child_hash, 0)
+                if cnt <= 1:
+                    rep_counts.pop(child_hash, None)
+                else:
+                    rep_counts[child_hash] = cnt - 1
 
                 if score > best_score:
                     best_score = score
@@ -614,6 +633,12 @@ class SearchService:
             # Stand-pat evaluation
             stand_pat = evaluate(board)
             stand_pat = stand_pat if board.side_to_move == "w" else -stand_pat
+
+            # 50-move rule and repetition draw checks at quiescence entry
+            if board.halfmove_clock >= 100:
+                return 0, []
+            if rep_counts.get(board.zobrist_hash, 0) >= 3:
+                return 0, []
 
             # Immediate terminal states (no legal moves)
             legal = board.generate_legal_moves()
@@ -698,9 +723,18 @@ class SearchService:
             best_line: List[Move] = []
             for m in captures:
                 board.make_move(m)
+                # repetition accounting
+                child_hash = board.zobrist_hash
+                rep_counts[child_hash] = rep_counts.get(child_hash, 0) + 1
                 score, pv = qsearch(-beta, -alpha, ply + 1)
                 score = -score
                 board.unmake_move(m)
+                # decrement
+                cnt = rep_counts.get(child_hash, 0)
+                if cnt <= 1:
+                    rep_counts.pop(child_hash, None)
+                else:
+                    rep_counts[child_hash] = cnt - 1
                 if score > alpha:
                     alpha = score
                     best_line = [m] + pv
