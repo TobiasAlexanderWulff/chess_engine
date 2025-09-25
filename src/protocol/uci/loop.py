@@ -284,6 +284,10 @@ class UCIEngine:
                     w = eps
                 weights.append(w)
 
+            # Small priority bonus for the current top-1 PV
+            if weights:
+                weights[0] *= 1.10  # +10% bias to stabilize top line
+
             per_time: List[int] = []
             floor_ms = 10
             if main_budget is not None and sum(weights) > 0:
