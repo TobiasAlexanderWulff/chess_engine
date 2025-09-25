@@ -168,50 +168,54 @@ class UCIEngine:
                 self._search_running = False
                 return
 
-            # MultiPV root-split: search each root move independently
+            # MultiPV root-split with two-pass allocation
             legal = self.game.legal_moves()
             if not legal:
                 write("bestmove (none)")
                 self._search_running = False
                 return
 
-            per_movetime = None
-            if eff_movetime is not None:
-                per_movetime = max(1, eff_movetime // max(1, self.multipv))
-
             lines: List[dict] = []
             topk: List[dict] = []
+            # Pass 1: shallow probe to establish ordering
+            pre_depth = max(1, min(2, eff_depth - 1))
+            pre_fraction = 0.2
+            pre_min_ms = 5
+            pre_max_ms = 30
+            if eff_movetime is not None:
+                pre_time_total = max(int(eff_movetime * pre_fraction), pre_min_ms * len(legal))
+                pre_time_total = min(pre_time_total, max(1, eff_movetime // 2))
+                pre_slice = max(pre_min_ms, min(pre_max_ms, pre_time_total // max(1, len(legal))))
+            else:
+                pre_slice = None
+
             for mv in legal:
                 if self._stop_event.is_set() or gen != self._gen:
-                    break
-                # Apply root move
+                    self._search_running = False
+                    return
                 try:
                     self.game.apply_move(mv)
                 except Exception:
                     continue
-                # Search child
-                child = self.search.search(
+                child_pre = self.search.search(
                     self.game,
-                    depth=max(1, eff_depth - 1),
-                    movetime_ms=per_movetime,
+                    depth=pre_depth,
+                    movetime_ms=pre_slice,
                     tt_max_entries=self._tt_entries_cap(),
                     on_iter=None,
                 )
-                # Undo root move
                 try:
                     self.game.undo_move()
                 except Exception:
                     pass
 
-                # Convert score to root perspective
-                if child.mate_in is not None:
-                    mate_root = -child.mate_in - 1
+                if child_pre.mate_in is not None:
+                    mate_root = -child_pre.mate_in - 1
                     cp_root = None
                 else:
                     mate_root = None
-                    cp_root = -child.score_cp if child.score_cp is not None else None
-
-                pv_full = [mv] + child.pv
+                    cp_root = -child_pre.score_cp if child_pre.score_cp is not None else None
+                pv_full = [mv] + child_pre.pv
                 if mate_root is not None:
                     key = (
                         (1_000_000 - 2 * abs(mate_root))
@@ -222,44 +226,159 @@ class UCIEngine:
                     key = cp_root if cp_root is not None else -10_000_000
                 lines.append(
                     {
+                        "mv": mv,
                         "pv": pv_full,
                         "mate_in": mate_root,
                         "score_cp": cp_root,
-                        "depth": child.depth + 1,
-                        "seldepth": child.seldepth + 1,
-                        "nodes": child.nodes,
-                        "time_ms": child.time_ms,
-                        "tthits": child.tt_hits,
-                        "hashfull": child.hashfull,
+                        "depth": child_pre.depth + 1,
+                        "seldepth": child_pre.seldepth + 1,
+                        "nodes": child_pre.nodes,
+                        "time_ms": child_pre.time_ms,
+                        "tthits": child_pre.tt_hits,
+                        "hashfull": child_pre.hashfull,
                         "key": key,
                     }
                 )
 
-                # Stream current top-K after each child finishes
+            if self._stop_event.is_set() or gen != self._gen:
+                self._search_running = False
+                return
+            lines.sort(key=lambda x: x["key"], reverse=True)
+            topk = lines[: min(self.multipv, len(lines))]
+            for idx, ln in enumerate(topk, start=1):
+                nodes = ln["nodes"]
+                depth = ln["depth"]
+                seldepth = ln["seldepth"]
+                tthits = ln["tthits"]
+                hashfull = ln["hashfull"]
+                time_ms = max(0, ln.get("time_ms", 0))
+                nps = int(nodes * 1000 / max(1, time_ms)) if time_ms > 0 else 0
+                if ln["mate_in"] is not None:
+                    score = f"mate {ln['mate_in']}"
+                else:
+                    score = f"cp {ln['score_cp'] or 0}"
+                pv_str = " ".join(m.to_uci() for m in ln["pv"])
+                write(
+                    f"info multipv {idx} depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} "
+                    f"score {score} pv {pv_str}"
+                )
+
+            # Pass 2: allocate remaining time proportional to linear-normalized scores across top-K
+            if eff_movetime is not None:
+                consumed = (pre_slice or 0) * len(legal)
+                main_budget = max(0, eff_movetime - consumed)
+            else:
+                main_budget = None
+
+            sel = topk
+            weights: List[float] = []
+            min_cp = min((ln["score_cp"] for ln in sel if ln["score_cp"] is not None), default=0)
+            delta = 50
+            eps = 1.0
+            for ln in sel:
+                if ln["mate_in"] is not None:
+                    w = 1e6 if ln["mate_in"] > 0 else eps
+                elif ln["score_cp"] is not None:
+                    w = max(eps, float(ln["score_cp"] - min_cp + delta))
+                else:
+                    w = eps
+                weights.append(w)
+
+            per_time: List[int] = []
+            floor_ms = 10
+            if main_budget is not None and sum(weights) > 0:
+                total_w = sum(weights)
+                remaining = main_budget
+                for w in weights:
+                    share = int(w / total_w * main_budget)
+                    share = max(floor_ms, share)
+                    per_time.append(share)
+                    remaining -= share
+                i = 0
+                while remaining != 0 and len(per_time) > 0:
+                    step = 1 if remaining > 0 else -1
+                    new_val = per_time[i] + step
+                    if new_val >= floor_ms:
+                        per_time[i] = new_val
+                        remaining -= step
+                    i = (i + 1) % len(per_time)
+            elif main_budget is not None:
+                even = max(floor_ms, main_budget // max(1, len(sel)))
+                per_time = [even for _ in sel]
+
+            for idx_sel, ln in enumerate(sel):
                 if self._stop_event.is_set() or gen != self._gen:
                     self._search_running = False
                     return
+                mv = ln["pv"][0]
+                try:
+                    self.game.apply_move(mv)
+                except Exception:
+                    continue
+                child_deep = self.search.search(
+                    self.game,
+                    depth=max(1, eff_depth - 1),
+                    movetime_ms=(per_time[idx_sel] if main_budget is not None else None),
+                    tt_max_entries=self._tt_entries_cap(),
+                    on_iter=None,
+                )
+                try:
+                    self.game.undo_move()
+                except Exception:
+                    pass
+
+                if child_deep.mate_in is not None:
+                    mate_root = -child_deep.mate_in - 1
+                    cp_root = None
+                else:
+                    mate_root = None
+                    cp_root = -child_deep.score_cp if child_deep.score_cp is not None else None
+                pv_full = [mv] + child_deep.pv
+                if mate_root is not None:
+                    key = (
+                        (1_000_000 - 2 * abs(mate_root))
+                        if mate_root > 0
+                        else (-1_000_000 + 2 * abs(mate_root))
+                    )
+                else:
+                    key = cp_root if cp_root is not None else -10_000_000
+                for i, ex in enumerate(lines):
+                    if ex.get("mv") == mv:
+                        lines[i] = {
+                            "mv": mv,
+                            "pv": pv_full,
+                            "mate_in": mate_root,
+                            "score_cp": cp_root,
+                            "depth": child_deep.depth + 1,
+                            "seldepth": child_deep.seldepth + 1,
+                            "nodes": child_deep.nodes,
+                            "time_ms": child_deep.time_ms,
+                            "tthits": child_deep.tt_hits,
+                            "hashfull": child_deep.hashfull,
+                            "key": key,
+                        }
+                        break
+
                 lines.sort(key=lambda x: x["key"], reverse=True)
                 topk = lines[: min(self.multipv, len(lines))]
-                for idx, ln in enumerate(topk, start=1):
-                    nodes = ln["nodes"]
-                    depth = ln["depth"]
-                    seldepth = ln["seldepth"]
-                    tthits = ln["tthits"]
-                    hashfull = ln["hashfull"]
-                    time_ms = max(0, ln.get("time_ms", 0))
+                for idx2, l2 in enumerate(topk, start=1):
+                    nodes = l2["nodes"]
+                    depth = l2["depth"]
+                    seldepth = l2["seldepth"]
+                    tthits = l2["tthits"]
+                    hashfull = l2["hashfull"]
+                    time_ms = max(0, l2.get("time_ms", 0))
                     nps = int(nodes * 1000 / max(1, time_ms)) if time_ms > 0 else 0
-                    if ln["mate_in"] is not None:
-                        score = f"mate {ln['mate_in']}"
+                    if l2["mate_in"] is not None:
+                        score = f"mate {l2['mate_in']}"
                     else:
-                        score = f"cp {ln['score_cp'] or 0}"
-                    pv_str = " ".join(m.to_uci() for m in ln["pv"])
+                        score = f"cp {l2['score_cp'] or 0}"
+                    pv_str = " ".join(m.to_uci() for m in l2["pv"])
                     write(
-                        f"info multipv {idx} depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} "
+                        f"info multipv {idx2} depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} "
                         f"score {score} pv {pv_str}"
                     )
 
-            # Ensure topk reflects final ordering
             if not topk:
                 lines.sort(key=lambda x: x["key"], reverse=True)
                 topk = lines[: min(self.multipv, len(lines))]
