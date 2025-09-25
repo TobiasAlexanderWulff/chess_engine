@@ -48,6 +48,9 @@ ROOK_OPEN_BONUS: Final = 14
 KING_SHIELD_BONUS: Final = 6  # per pawn in king shield ring
 ROOK_SEVENTH_BONUS: Final = 20
 OUTPOST_N_BONUS: Final = 25
+# Passed pawns (by rank, white perspective; rank 0..7)
+PASSED_PAWN_MG: Final = [0, 5, 10, 20, 35, 60, 90, 0]
+PASSED_PAWN_EG: Final = [0, 10, 20, 35, 60, 90, 140, 0]
 
 
 def _popcount(x: int) -> int:
@@ -183,6 +186,34 @@ def _pawn_supports_square(board: Board, sq: int, white: bool) -> bool:
             if o <= 63 and ((board.bb[BP] >> o) & 1):
                 return True
     return False
+
+
+def _is_passed_pawn(board: Board, sq: int, white: bool) -> bool:
+    # A pawn is passed if there is no opposing pawn on the same or adjacent files
+    # on any square ahead of it (toward promotion).
+    f = sq % 8
+    r = sq // 8
+    opp_pawns = board.bb[BP] if white else board.bb[WP]
+
+    files = []
+    if f > 0:
+        files.append(FILE_MASKS[f - 1])
+    files.append(FILE_MASKS[f])
+    if f < 7:
+        files.append(FILE_MASKS[f + 1])
+
+    mask = 0
+    for fm in files:
+        if white:
+            # squares with index > r*8+7 -> ranks r+1..7
+            cutoff = (r + 1) * 8
+            mask |= fm & (~((1 << cutoff) - 1))
+        else:
+            # squares with index < r*8 -> ranks 0..r-1
+            cutoff = r * 8
+            mask |= fm & ((1 << cutoff) - 1)
+
+    return (opp_pawns & mask) == 0
 
 
 # Simple piece-square tables (white perspective), centipawns
@@ -826,5 +857,18 @@ def evaluate(board: Board) -> int:
     # King safety: pawn shield in front of the king
     score += _king_shield_pawns(board, True) * KING_SHIELD_BONUS
     score -= _king_shield_pawns(board, False) * KING_SHIELD_BONUS
+
+    # Passed pawns (phase-scaled bonuses by rank)
+    pp_scale = [
+        (mg_scaled * mg + eg_scaled * eg) // 128 for mg, eg in zip(PASSED_PAWN_MG, PASSED_PAWN_EG)
+    ]
+    for sq in _iter_bits(board.bb[WP]):
+        if _is_passed_pawn(board, sq, True):
+            r = sq // 8
+            score += pp_scale[r]
+    for sq in _iter_bits(board.bb[BP]):
+        if _is_passed_pawn(board, sq, False):
+            r = sq // 8
+            score -= pp_scale[7 - r]
 
     return score
