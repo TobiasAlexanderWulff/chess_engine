@@ -33,6 +33,7 @@ class SearchResult:
     tt_size: int
     depth: int
     time_ms: int
+    seldepth: int
 
 
 class SearchService:
@@ -62,6 +63,8 @@ class SearchService:
                     Optional[int],  # score_cp
                     Optional[int],  # mate_in
                     List[Move],  # pv
+                    int,  # seldepth
+                    int,  # tt_hits (cumulative)
                 ],
                 None,
             ]
@@ -96,6 +99,8 @@ class SearchService:
 
         INF = 10_000_000
         MATE_SCORE = 1_000_000  # mate scores are within +/- MATE_SCORE window
+        seldepth_iter = 0
+        seldepth_global = 0
 
         def probe(alpha: int, beta: int, d: int) -> Optional[Tuple[int, Optional[Move]]]:
             nonlocal tt_probes, tt_hits, tt_exact_hits, tt_lower_hits, tt_upper_hits
@@ -368,7 +373,11 @@ class SearchService:
             return gain[0]
 
         def negamax(d: int, alpha: int, beta: int, ply: int = 0) -> Tuple[int, List[Move]]:
-            nonlocal nodes
+            nonlocal nodes, seldepth_iter, seldepth_global
+            if ply > seldepth_iter:
+                seldepth_iter = ply
+            if ply > seldepth_global:
+                seldepth_global = ply
             nodes += 1
 
             # Leaf or terminal
@@ -640,7 +649,11 @@ class SearchService:
             return best_score, best_line
 
         def qsearch(alpha: int, beta: int, ply: int) -> Tuple[int, List[Move]]:
-            nonlocal nodes, qnodes
+            nonlocal nodes, qnodes, seldepth_iter, seldepth_global
+            if ply > seldepth_iter:
+                seldepth_iter = ply
+            if ply > seldepth_global:
+                seldepth_global = ply
             nodes += 1
             qnodes += 1
 
@@ -777,6 +790,7 @@ class SearchService:
 
         for d in range(1, max(1, depth) + 1):
             generation += 1
+            seldepth_iter = 0
             iter_start = time.perf_counter()
             if d == 1 or in_mate_window(last_score):
                 score, pv = negamax(d, -INF, INF)
@@ -804,7 +818,17 @@ class SearchService:
                         )
                     score_cp_cb: Optional[int] = None if mate_in_cb is not None else score
                     try:
-                        on_iter(d, elapsed_ms_total, nodes, qnodes, score_cp_cb, mate_in_cb, pv)
+                        on_iter(
+                            d,
+                            elapsed_ms_total,
+                            nodes,
+                            qnodes,
+                            score_cp_cb,
+                            mate_in_cb,
+                            pv,
+                            seldepth_iter,
+                            tt_hits,
+                        )
                     except Exception:
                         pass
                 prev_nodes, prev_qnodes = nodes, qnodes
@@ -859,7 +883,17 @@ class SearchService:
                     )
                 score_cp_cb2: Optional[int] = None if mate_in_cb2 is not None else score
                 try:
-                    on_iter(d, elapsed_ms_total, nodes, qnodes, score_cp_cb2, mate_in_cb2, pv)
+                    on_iter(
+                        d,
+                        elapsed_ms_total,
+                        nodes,
+                        qnodes,
+                        score_cp_cb2,
+                        mate_in_cb2,
+                        pv,
+                        seldepth_iter,
+                        tt_hits,
+                    )
                 except Exception:
                     pass
             prev_nodes, prev_qnodes = nodes, qnodes
@@ -903,4 +937,5 @@ class SearchService:
             tt_size=len(tt),
             depth=completed_depth,
             time_ms=int((time.perf_counter() - start) * 1000),
+            seldepth=seldepth_global,
         )
