@@ -162,6 +162,7 @@ def create_app() -> FastAPI:
             "fail_low": res.fail_low,
             "tt_probes": res.tt_probes,
             "re_searches": res.re_searches,
+            "iters": res.iters,
             "depth": res.depth,
             "time_ms": res.time_ms,
         }

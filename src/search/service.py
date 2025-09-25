@@ -24,6 +24,7 @@ class SearchResult:
     fail_low: int
     tt_probes: int
     re_searches: int
+    iters: List[Dict[str, int]]
     depth: int
     time_ms: int
 
@@ -653,6 +654,12 @@ class SearchService:
         fail_high = 0
         fail_low = 0
         re_searches = 0
+        iters: List[Dict[str, int]] = []
+
+        prev_nodes = 0
+        prev_qnodes = 0
+        prev_fail_high = 0
+        prev_fail_low = 0
 
         BASE_WINDOW = 50  # aspiration window in centipawns
 
@@ -660,11 +667,25 @@ class SearchService:
             return abs(sc) >= MATE_SCORE - 512
 
         for d in range(1, max(1, depth) + 1):
+            iter_start = time.perf_counter()
             if d == 1 or in_mate_window(last_score):
                 score, pv = negamax(d, -INF, INF)
                 if time_up:
                     break
                 last_score, last_pv, completed_depth = score, pv, d
+                # Record iteration stats
+                iters.append(
+                    {
+                        "depth": d,
+                        "time_ms": int((time.perf_counter() - iter_start) * 1000),
+                        "nodes": nodes - prev_nodes,
+                        "qnodes": qnodes - prev_qnodes,
+                        "fail_high": fail_high - prev_fail_high,
+                        "fail_low": fail_low - prev_fail_low,
+                    }
+                )
+                prev_nodes, prev_qnodes = nodes, qnodes
+                prev_fail_high, prev_fail_low = fail_high, fail_low
                 continue
 
             window = BASE_WINDOW
@@ -691,6 +712,18 @@ class SearchService:
             if time_up:
                 break
             last_score, last_pv, completed_depth = score, pv, d
+            iters.append(
+                {
+                    "depth": d,
+                    "time_ms": int((time.perf_counter() - iter_start) * 1000),
+                    "nodes": nodes - prev_nodes,
+                    "qnodes": qnodes - prev_qnodes,
+                    "fail_high": fail_high - prev_fail_high,
+                    "fail_low": fail_low - prev_fail_low,
+                }
+            )
+            prev_nodes, prev_qnodes = nodes, qnodes
+            prev_fail_high, prev_fail_low = fail_high, fail_low
 
         best_move = (
             last_pv[0] if last_pv else (game.legal_moves()[0] if game.legal_moves() else None)
@@ -717,6 +750,7 @@ class SearchService:
             fail_low=fail_low,
             tt_probes=tt_probes,
             re_searches=re_searches,
+            iters=iters,
             depth=completed_depth,
             time_ms=int((time.perf_counter() - start) * 1000),
         )
