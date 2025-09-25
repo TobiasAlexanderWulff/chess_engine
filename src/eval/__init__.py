@@ -45,6 +45,7 @@ BISHOP_PAIR_BONUS: Final = 30
 ROOK_SEMIOPEN_BONUS: Final = 8
 ROOK_OPEN_BONUS: Final = 14
 KING_SHIELD_BONUS: Final = 6  # per pawn in king shield ring
+ROOK_SEVENTH_BONUS: Final = 20
 
 
 def _popcount(x: int) -> int:
@@ -746,6 +747,14 @@ def evaluate(board: Board) -> int:
             score -= ROOK_OPEN_BONUS
         elif not own_pawn and opp_pawn:
             score -= ROOK_SEMIOPEN_BONUS
+
+    # Rooks on seventh rank (from own perspective): white on rank 7 (index 6), black on rank 2 (index 1)
+    for sq in _iter_bits(board.bb[WR]):
+        if (sq // 8) == 6:
+            score += ROOK_SEVENTH_BONUS
+    for sq in _iter_bits(board.bb[BR]):
+        if (sq // 8) == 1:
+            score -= ROOK_SEVENTH_BONUS
 
     # King safety: pawn shield in front of the king
     score += _king_shield_pawns(board, True) * KING_SHIELD_BONUS
