@@ -243,6 +243,7 @@ class UCIEngine:
         nps = int(nodes * 1000 / max(1, time_ms))
         seldepth = res.seldepth
         tthits = res.tt_hits
+        hashfull = res.hashfull
         if res.mate_in is not None:
             score = f"mate {res.mate_in}"
         else:
@@ -250,7 +251,7 @@ class UCIEngine:
             score = f"cp {cp}"
         pv = " ".join(m.to_uci() for m in res.pv)
         write(
-            f"info depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} "
+            f"info depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} "
             f"score {score} pv {pv}"
         )
 
@@ -265,6 +266,7 @@ class UCIEngine:
             pv: List[Move],
             seldepth: int,
             tthits: int,
+            hashfull: int,
         ) -> None:
             # Suppress if search was stopped or superseded
             if self._stop_event.is_set() or gen != self._gen:
@@ -277,7 +279,7 @@ class UCIEngine:
                 score = f"cp {score_cp or 0}"
             pv_str = " ".join(m.to_uci() for m in pv)
             write(
-                f"info depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} "
+                f"info depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} "
                 f"score {score} pv {pv_str}"
             )
 

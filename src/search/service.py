@@ -34,6 +34,7 @@ class SearchResult:
     depth: int
     time_ms: int
     seldepth: int
+    hashfull: int
 
 
 class SearchService:
@@ -65,6 +66,7 @@ class SearchService:
                     List[Move],  # pv
                     int,  # seldepth
                     int,  # tt_hits (cumulative)
+                    int,  # hashfull (permille)
                 ],
                 None,
             ]
@@ -817,6 +819,11 @@ class SearchService:
                             else -((MATE_SCORE + score + 1) // 2)
                         )
                     score_cp_cb: Optional[int] = None if mate_in_cb is not None else score
+                    # Compute hashfull in permille if capacity known
+                    if tt_max_entries is not None and tt_max_entries > 0:
+                        hashfull = int(min(1000, (len(tt) * 1000) / tt_max_entries))
+                    else:
+                        hashfull = 0
                     try:
                         on_iter(
                             d,
@@ -828,6 +835,7 @@ class SearchService:
                             pv,
                             seldepth_iter,
                             tt_hits,
+                            hashfull,
                         )
                     except Exception:
                         pass
@@ -882,6 +890,10 @@ class SearchService:
                         else -((MATE_SCORE + score + 1) // 2)
                     )
                 score_cp_cb2: Optional[int] = None if mate_in_cb2 is not None else score
+                if tt_max_entries is not None and tt_max_entries > 0:
+                    hashfull2 = int(min(1000, (len(tt) * 1000) / tt_max_entries))
+                else:
+                    hashfull2 = 0
                 try:
                     on_iter(
                         d,
@@ -893,6 +905,7 @@ class SearchService:
                         pv,
                         seldepth_iter,
                         tt_hits,
+                        hashfull2,
                     )
                 except Exception:
                     pass
@@ -938,4 +951,9 @@ class SearchService:
             depth=completed_depth,
             time_ms=int((time.perf_counter() - start) * 1000),
             seldepth=seldepth_global,
+            hashfull=(
+                int(min(1000, (len(tt) * 1000) / tt_max_entries))
+                if (tt_max_entries is not None and tt_max_entries > 0)
+                else 0
+            ),
         )
