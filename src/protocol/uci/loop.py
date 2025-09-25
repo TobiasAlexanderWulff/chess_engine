@@ -146,26 +146,118 @@ class UCIEngine:
         gen = self._gen
 
         def worker() -> None:
-            # Run search (blocking) and publish result if still current
-            res = self.search.search(
-                self.game,
-                depth=eff_depth,
-                movetime_ms=eff_movetime,
-                tt_max_entries=self._tt_entries_cap(),
-                on_iter=self._make_iter_callback(gen, write),
-            )
-            # If stop was requested and handled, or a newer gen started, skip output
-            if self._stop_event.is_set() or gen != self._gen:
-                # Preserve last_result for possible consumers but avoid emitting
+            if self.multipv <= 1:
+                # Run search (blocking) and publish result if still current
+                res = self.search.search(
+                    self.game,
+                    depth=eff_depth,
+                    movetime_ms=eff_movetime,
+                    tt_max_entries=self._tt_entries_cap(),
+                    on_iter=self._make_iter_callback(gen, write),
+                )
+                if self._stop_event.is_set() or gen != self._gen:
+                    with self._result_lock:
+                        self._last_result = res
+                    self._search_running = False
+                    return
                 with self._result_lock:
                     self._last_result = res
+                self._emit_info(res, write)
+                best = res.best_move.to_uci() if res.best_move else "(none)"
+                write(f"bestmove {best}")
                 self._search_running = False
                 return
-            with self._result_lock:
-                self._last_result = res
-            self._emit_info(res, write)
-            best = res.best_move.to_uci() if res.best_move else "(none)"
-            write(f"bestmove {best}")
+
+            # MultiPV root-split: search each root move independently
+            legal = self.game.legal_moves()
+            if not legal:
+                write("bestmove (none)")
+                self._search_running = False
+                return
+
+            per_movetime = None
+            if eff_movetime is not None:
+                per_movetime = max(1, eff_movetime // max(1, self.multipv))
+
+            lines = []
+            for mv in legal:
+                if self._stop_event.is_set() or gen != self._gen:
+                    break
+                # Apply root move
+                try:
+                    self.game.apply_move(mv)
+                except Exception:
+                    continue
+                # Search child
+                child = self.search.search(
+                    self.game,
+                    depth=max(1, eff_depth - 1),
+                    movetime_ms=per_movetime,
+                    tt_max_entries=self._tt_entries_cap(),
+                    on_iter=None,
+                )
+                # Undo root move
+                try:
+                    self.game.undo_move()
+                except Exception:
+                    pass
+
+                # Convert score to root perspective
+                if child.mate_in is not None:
+                    mate_root = -child.mate_in - 1
+                    cp_root = None
+                else:
+                    mate_root = None
+                    cp_root = -child.score_cp if child.score_cp is not None else None
+
+                pv_full = [mv] + child.pv
+                if mate_root is not None:
+                    key = (
+                        (1_000_000 - 2 * abs(mate_root))
+                        if mate_root > 0
+                        else (-1_000_000 + 2 * abs(mate_root))
+                    )
+                else:
+                    key = cp_root if cp_root is not None else -10_000_000
+                lines.append(
+                    {
+                        "pv": pv_full,
+                        "mate_in": mate_root,
+                        "score_cp": cp_root,
+                        "depth": child.depth + 1,
+                        "seldepth": child.seldepth + 1,
+                        "nodes": child.nodes,
+                        "tthits": child.tt_hits,
+                        "hashfull": child.hashfull,
+                        "key": key,
+                    }
+                )
+
+            lines.sort(key=lambda x: x["key"], reverse=True)
+            topk = lines[: min(self.multipv, len(lines))]
+
+            if self._stop_event.is_set() or gen != self._gen:
+                self._search_running = False
+                return
+
+            for idx, ln in enumerate(topk, start=1):
+                nodes = ln["nodes"]
+                depth = ln["depth"]
+                seldepth = ln["seldepth"]
+                tthits = ln["tthits"]
+                hashfull = ln["hashfull"]
+                if ln["mate_in"] is not None:
+                    score = f"mate {ln['mate_in']}"
+                else:
+                    score = f"cp {ln['score_cp'] or 0}"
+                pv_str = " ".join(m.to_uci() for m in ln["pv"])
+                write(
+                    f"info multipv {idx} depth {depth} seldepth {seldepth} nodes {nodes} tthits {tthits} hashfull {hashfull} "
+                    f"score {score} pv {pv_str}"
+                )
+
+            bestmove = topk[0]["pv"][0].to_uci() if topk else "(none)"
+            write(f"bestmove {bestmove}")
             self._search_running = False
 
         self._search_thread = threading.Thread(target=worker, name="uci-search", daemon=True)
