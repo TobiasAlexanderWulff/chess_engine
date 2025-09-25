@@ -31,6 +31,16 @@ B_VAL: Final = 330
 R_VAL: Final = 500
 Q_VAL: Final = 900
 
+# Heuristic weights (centipawns)
+MOB_N: Final = 2
+MOB_B: Final = 2
+MOB_R: Final = 2
+MOB_Q: Final = 1
+BISHOP_PAIR_BONUS: Final = 30
+ROOK_SEMIOPEN_BONUS: Final = 8
+ROOK_OPEN_BONUS: Final = 14
+KING_SHIELD_BONUS: Final = 6  # per pawn in king shield ring
+
 
 def _popcount(x: int) -> int:
     return x.bit_count()
@@ -49,6 +59,74 @@ def _mirror_sq(sq: int) -> int:
     f = sq % 8
     r = sq // 8
     return (7 - r) * 8 + f
+
+
+def _file_mask(file_idx: int) -> int:
+    mask = 0
+    for r in range(8):
+        mask |= 1 << (r * 8 + file_idx)
+    return mask
+
+
+FILE_MASKS: Final = tuple(_file_mask(f) for f in range(8))
+
+
+def _count_knight_moves(sq: int, own_occ: int) -> int:
+    f = sq % 8
+    r = sq // 8
+    cnt = 0
+    for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
+        tf, tr = f + df, r + dr
+        if 0 <= tf < 8 and 0 <= tr < 8:
+            to = tr * 8 + tf
+            if ((own_occ >> to) & 1) == 0:
+                cnt += 1
+    return cnt
+
+
+def _count_slider_moves(
+    sq: int, own_occ: int, occ_all: int, dirs: Iterable[tuple[int, int]]
+) -> int:
+    f = sq % 8
+    r = sq // 8
+    cnt = 0
+    for df, dr in dirs:
+        tf, tr = f, r
+        while True:
+            tf += df
+            tr += dr
+            if not (0 <= tf < 8 and 0 <= tr < 8):
+                break
+            to = tr * 8 + tf
+            if ((own_occ >> to) & 1) != 0:
+                break
+            cnt += 1
+            if ((occ_all >> to) & 1) != 0:
+                break
+    return cnt
+
+
+def _king_shield_pawns(board: Board, white: bool) -> int:
+    # Count friendly pawns in two-rank ring in front of king on files f-1..f+1
+    king_bb = board.bb[WK] if white else board.bb[BK]
+    if king_bb == 0:
+        return 0
+    ksq = (king_bb & -king_bb).bit_length() - 1
+    kf = ksq % 8
+    kr = ksq // 8
+    pawns = board.bb[WP] if white else board.bb[BP]
+    total = 0
+    for df in (-1, 0, 1):
+        ff = kf + df
+        if not (0 <= ff < 8):
+            continue
+        for dr in (1, 2):
+            rr = kr + (dr if white else -dr)
+            if 0 <= rr < 8:
+                sq = rr * 8 + ff
+                if ((pawns >> sq) & 1) != 0:
+                    total += 1
+    return total
 
 
 # Simple piece-square tables (white perspective), centipawns
@@ -507,5 +585,83 @@ def evaluate(board: Board) -> int:
         score += PSQT_K[sq]
     for sq in _iter_bits(board.bb[BK]):
         score -= PSQT_K[_mirror_sq(sq)]
+
+    # Mobility (simple pseudo-legal without self-occupancy)
+    occ_all = 0
+    for bb in board.bb:
+        occ_all |= bb
+    occ_w = board.bb[WP] | board.bb[WN] | board.bb[WB] | board.bb[WR] | board.bb[WQ] | board.bb[WK]
+    occ_b = board.bb[BP] | board.bb[BN] | board.bb[BB] | board.bb[BR] | board.bb[BQ] | board.bb[BK]
+
+    # Knights
+    w_mob = 0
+    b_mob = 0
+    for sq in _iter_bits(board.bb[WN]):
+        w_mob += _count_knight_moves(sq, occ_w)
+    for sq in _iter_bits(board.bb[BN]):
+        b_mob += _count_knight_moves(sq, occ_b)
+    score += (w_mob - b_mob) * MOB_N
+
+    # Bishops
+    dirs_b = ((-1, -1), (1, -1), (-1, 1), (1, 1))
+    w_mob = 0
+    b_mob = 0
+    for sq in _iter_bits(board.bb[WB]):
+        w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_b)
+    for sq in _iter_bits(board.bb[BB]):
+        b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_b)
+    score += (w_mob - b_mob) * MOB_B
+
+    # Rooks
+    dirs_r = ((-1, 0), (1, 0), (0, -1), (0, 1))
+    w_mob = 0
+    b_mob = 0
+    for sq in _iter_bits(board.bb[WR]):
+        w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_r)
+    for sq in _iter_bits(board.bb[BR]):
+        b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_r)
+    score += (w_mob - b_mob) * MOB_R
+
+    # Queens
+    dirs_q = dirs_b + dirs_r
+    w_mob = 0
+    b_mob = 0
+    for sq in _iter_bits(board.bb[WQ]):
+        w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_q)
+    for sq in _iter_bits(board.bb[BQ]):
+        b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_q)
+    score += (w_mob - b_mob) * MOB_Q
+
+    # Bishop pair
+    if board.bb[WB].bit_count() >= 2:
+        score += BISHOP_PAIR_BONUS
+    if board.bb[BB].bit_count() >= 2:
+        score -= BISHOP_PAIR_BONUS
+
+    # Rook file bonuses
+    wpawns = board.bb[WP]
+    bpawns = board.bb[BP]
+    for sq in _iter_bits(board.bb[WR]):
+        f = sq % 8
+        file_mask = FILE_MASKS[f]
+        own_pawn = (wpawns & file_mask) != 0
+        opp_pawn = (bpawns & file_mask) != 0
+        if not own_pawn and not opp_pawn:
+            score += ROOK_OPEN_BONUS
+        elif not own_pawn and opp_pawn:
+            score += ROOK_SEMIOPEN_BONUS
+    for sq in _iter_bits(board.bb[BR]):
+        f = sq % 8
+        file_mask = FILE_MASKS[f]
+        own_pawn = (bpawns & file_mask) != 0
+        opp_pawn = (wpawns & file_mask) != 0
+        if not own_pawn and not opp_pawn:
+            score -= ROOK_OPEN_BONUS
+        elif not own_pawn and opp_pawn:
+            score -= ROOK_SEMIOPEN_BONUS
+
+    # King safety: pawn shield in front of the king
+    score += _king_shield_pawns(board, True) * KING_SHIELD_BONUS
+    score -= _king_shield_pawns(board, False) * KING_SHIELD_BONUS
 
     return score
