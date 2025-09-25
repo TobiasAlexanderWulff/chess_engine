@@ -47,12 +47,19 @@ class SearchService:
         depth: int = 1,
         movetime_ms: Optional[int] = None,
         tt_max_entries: Optional[int] = None,
+        *,
+        enable_pvs: bool = True,
+        enable_nmp: bool = True,
+        enable_lmr: bool = True,
+        enable_futility: bool = True,
     ) -> SearchResult:
         # Deterministic negamax alpha-beta with quiescence, simple material evaluation,
         # and a transposition table. Includes terminal scoring (mate/stalemate/draw).
         board = game.board
         nodes = 0
         qnodes = 0
+        # Repetition tracking: seed counts from the game so threefold inside search is detected
+        rep_counts: Dict[int, int] = dict(getattr(game, "repetition", {}))
         tt_probes = 0
         tt_hits = 0
         tt_exact_hits = 0
@@ -356,6 +363,14 @@ class SearchService:
                 score = base if board.side_to_move == "w" else -base
                 return score, []
 
+            # 50-move rule
+            if board.halfmove_clock >= 100:
+                return 0, []
+
+            # Threefold repetition (counts include current game history)
+            if rep_counts.get(board.zobrist_hash, 0) >= 3:
+                return 0, []
+
             # In-check extension: extend search by 1 ply when side to move is in check
             in_check_now = board.in_check()
             if d > 0 and in_check_now:
@@ -392,7 +407,7 @@ class SearchService:
 
             # Null-move pruning (conservative): when not in check, try a null move
             # to prove a cutoff. Skip near-mate scores and zugzwang-like material.
-            if d >= 3 and not in_check_now and beta < MATE_SCORE - 1024:
+            if enable_nmp and d >= 3 and not in_check_now and beta < MATE_SCORE - 1024:
                 # Zugzwang guard: require at least one non-pawn piece for side to move
                 if board.side_to_move == "w":
                     non_pawn = board.bb[WN] | board.bb[WB] | board.bb[WR] | board.bb[WQ]
@@ -531,7 +546,8 @@ class SearchService:
                 # Futility pruning at the horizon (very conservative)
                 # Skip quiet moves unlikely to raise alpha at depth 1
                 if (
-                    d == 1
+                    enable_futility
+                    and d == 1
                     and not in_check_now
                     and not is_capture
                     and m.promotion is None
@@ -545,27 +561,41 @@ class SearchService:
                         continue
 
                 board.make_move(m)
+                # Increment repetition count for child position
+                child_hash = board.zobrist_hash
+                rep_counts[child_hash] = rep_counts.get(child_hash, 0) + 1
 
-                # Late Move Reductions for quiet, non-tactical late moves
-                r = 0
-                if (
-                    d >= 3
-                    and not in_check_now
-                    and not is_capture
-                    and m.promotion is None
-                    and idx >= 4
-                ):
-                    r = 1
-                    child_score_reduced, child_pv = negamax(d - 1 - r, -beta, -alpha, ply + 1)
-                    # If it improves, re-search at full depth (verification)
-                    if child_score_reduced > alpha:
-                        child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
-                    else:
-                        child_score = child_score_reduced
-                else:
+                # Principal Variation Search (PVS)
+                if not enable_pvs or idx == 0:
+                    # Full window for the first move
                     child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
-                score = -child_score
+                    score = -child_score
+                else:
+                    # Zero-window probe for subsequent moves
+                    search_depth = d - 1
+                    # Apply a conservative LMR reduction on the probe for late quiet moves
+                    if (
+                        enable_lmr
+                        and d >= 3
+                        and not in_check_now
+                        and not is_capture
+                        and m.promotion is None
+                        and idx >= 4
+                    ):
+                        search_depth -= 1
+                    zw_score, child_pv = negamax(search_depth, -alpha - 1, -alpha, ply + 1)
+                    score = -zw_score
+                    if score > alpha:
+                        # Re-search at full depth, full window
+                        child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
+                        score = -child_score
                 board.unmake_move(m)
+                # Decrement repetition count for child
+                cnt = rep_counts.get(child_hash, 0)
+                if cnt <= 1:
+                    rep_counts.pop(child_hash, None)
+                else:
+                    rep_counts[child_hash] = cnt - 1
 
                 if score > best_score:
                     best_score = score
@@ -603,6 +633,12 @@ class SearchService:
             # Stand-pat evaluation
             stand_pat = evaluate(board)
             stand_pat = stand_pat if board.side_to_move == "w" else -stand_pat
+
+            # 50-move rule and repetition draw checks at quiescence entry
+            if board.halfmove_clock >= 100:
+                return 0, []
+            if rep_counts.get(board.zobrist_hash, 0) >= 3:
+                return 0, []
 
             # Immediate terminal states (no legal moves)
             legal = board.generate_legal_moves()
@@ -687,9 +723,18 @@ class SearchService:
             best_line: List[Move] = []
             for m in captures:
                 board.make_move(m)
+                # repetition accounting
+                child_hash = board.zobrist_hash
+                rep_counts[child_hash] = rep_counts.get(child_hash, 0) + 1
                 score, pv = qsearch(-beta, -alpha, ply + 1)
                 score = -score
                 board.unmake_move(m)
+                # decrement
+                cnt = rep_counts.get(child_hash, 0)
+                if cnt <= 1:
+                    rep_counts.pop(child_hash, None)
+                else:
+                    rep_counts[child_hash] = cnt - 1
                 if score > alpha:
                     alpha = score
                     best_line = [m] + pv
@@ -721,10 +766,7 @@ class SearchService:
             iter_start = time.perf_counter()
             if d == 1 or in_mate_window(last_score):
                 score, pv = negamax(d, -INF, INF)
-                if time_up:
-                    break
-                last_score, last_pv, completed_depth = score, pv, d
-                # Record iteration stats
+                # Record iteration stats even if time ran out during this iteration
                 iters.append(
                     {
                         "depth": d,
@@ -737,6 +779,10 @@ class SearchService:
                 )
                 prev_nodes, prev_qnodes = nodes, qnodes
                 prev_fail_high, prev_fail_low = fail_high, fail_low
+                if time_up:
+                    last_score, last_pv, completed_depth = score, pv, d
+                    break
+                last_score, last_pv, completed_depth = score, pv, d
                 continue
 
             window = BASE_WINDOW
@@ -760,9 +806,7 @@ class SearchService:
                 else:
                     break
 
-            if time_up:
-                break
-            last_score, last_pv, completed_depth = score, pv, d
+            # Record iteration stats even if time_up
             iters.append(
                 {
                     "depth": d,
@@ -775,6 +819,10 @@ class SearchService:
             )
             prev_nodes, prev_qnodes = nodes, qnodes
             prev_fail_high, prev_fail_low = fail_high, fail_low
+            if time_up:
+                last_score, last_pv, completed_depth = score, pv, d
+                break
+            last_score, last_pv, completed_depth = score, pv, d
 
         best_move = (
             last_pv[0] if last_pv else (game.legal_moves()[0] if game.legal_moves() else None)

@@ -31,6 +31,27 @@ B_VAL: Final = 330
 R_VAL: Final = 500
 Q_VAL: Final = 900
 
+# Heuristic weights (centipawns)
+# Mobility weights (middlegame / endgame)
+MOB_N_MG: Final = 2
+MOB_N_EG: Final = 1
+MOB_B_MG: Final = 2
+MOB_B_EG: Final = 3
+MOB_R_MG: Final = 2
+MOB_R_EG: Final = 2
+MOB_Q_MG: Final = 1
+MOB_Q_EG: Final = 1
+BISHOP_PAIR_MG: Final = 20
+BISHOP_PAIR_EG: Final = 40
+ROOK_SEMIOPEN_BONUS: Final = 8
+ROOK_OPEN_BONUS: Final = 14
+KING_SHIELD_BONUS: Final = 6  # per pawn in king shield ring
+ROOK_SEVENTH_BONUS: Final = 20
+OUTPOST_N_BONUS: Final = 25
+# Passed pawns (by rank, white perspective; rank 0..7)
+PASSED_PAWN_MG: Final = [0, 5, 10, 20, 35, 60, 90, 0]
+PASSED_PAWN_EG: Final = [0, 10, 20, 35, 60, 90, 140, 0]
+
 
 def _popcount(x: int) -> int:
     return x.bit_count()
@@ -49,6 +70,150 @@ def _mirror_sq(sq: int) -> int:
     f = sq % 8
     r = sq // 8
     return (7 - r) * 8 + f
+
+
+def _file_mask(file_idx: int) -> int:
+    mask = 0
+    for r in range(8):
+        mask |= 1 << (r * 8 + file_idx)
+    return mask
+
+
+FILE_MASKS: Final = tuple(_file_mask(f) for f in range(8))
+
+
+def _count_knight_moves(sq: int, own_occ: int) -> int:
+    f = sq % 8
+    r = sq // 8
+    cnt = 0
+    for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
+        tf, tr = f + df, r + dr
+        if 0 <= tf < 8 and 0 <= tr < 8:
+            to = tr * 8 + tf
+            if ((own_occ >> to) & 1) == 0:
+                cnt += 1
+    return cnt
+
+
+def _count_slider_moves(
+    sq: int, own_occ: int, occ_all: int, dirs: Iterable[tuple[int, int]]
+) -> int:
+    f = sq % 8
+    r = sq // 8
+    cnt = 0
+    for df, dr in dirs:
+        tf, tr = f, r
+        while True:
+            tf += df
+            tr += dr
+            if not (0 <= tf < 8 and 0 <= tr < 8):
+                break
+            to = tr * 8 + tf
+            if ((own_occ >> to) & 1) != 0:
+                break
+            cnt += 1
+            if ((occ_all >> to) & 1) != 0:
+                break
+    return cnt
+
+
+def _king_shield_pawns(board: Board, white: bool) -> int:
+    # Count friendly pawns in two-rank ring in front of king on files f-1..f+1
+    king_bb = board.bb[WK] if white else board.bb[BK]
+    if king_bb == 0:
+        return 0
+    ksq = (king_bb & -king_bb).bit_length() - 1
+    kf = ksq % 8
+    kr = ksq // 8
+    pawns = board.bb[WP] if white else board.bb[BP]
+    total = 0
+    for df in (-1, 0, 1):
+        ff = kf + df
+        if not (0 <= ff < 8):
+            continue
+        for dr in (1, 2):
+            rr = kr + (dr if white else -dr)
+            if 0 <= rr < 8:
+                sq = rr * 8 + ff
+                if ((pawns >> sq) & 1) != 0:
+                    total += 1
+    return total
+
+
+def _pawn_attacks_square(board: Board, sq: int, by_white: bool) -> bool:
+    f = sq % 8
+    if by_white:
+        # White pawns attack from behind (downwards relative to sq): sq-7 and sq-9
+        if f > 0:
+            o = sq - 9
+            if o >= 0 and ((board.bb[WP] >> o) & 1):
+                return True
+        if f < 7:
+            o = sq - 7
+            if o >= 0 and ((board.bb[WP] >> o) & 1):
+                return True
+    else:
+        # Black pawns attack from ahead (upwards relative to sq): sq+7 and sq+9
+        if f < 7:
+            o = sq + 9
+            if o <= 63 and ((board.bb[BP] >> o) & 1):
+                return True
+        if f > 0:
+            o = sq + 7
+            if o <= 63 and ((board.bb[BP] >> o) & 1):
+                return True
+    return False
+
+
+def _pawn_supports_square(board: Board, sq: int, white: bool) -> bool:
+    f = sq % 8
+    if white:
+        if f > 0:
+            o = sq - 9
+            if o >= 0 and ((board.bb[WP] >> o) & 1):
+                return True
+        if f < 7:
+            o = sq - 7
+            if o >= 0 and ((board.bb[WP] >> o) & 1):
+                return True
+    else:
+        if f < 7:
+            o = sq + 9
+            if o <= 63 and ((board.bb[BP] >> o) & 1):
+                return True
+        if f > 0:
+            o = sq + 7
+            if o <= 63 and ((board.bb[BP] >> o) & 1):
+                return True
+    return False
+
+
+def _is_passed_pawn(board: Board, sq: int, white: bool) -> bool:
+    # A pawn is passed if there is no opposing pawn on the same or adjacent files
+    # on any square ahead of it (toward promotion).
+    f = sq % 8
+    r = sq // 8
+    opp_pawns = board.bb[BP] if white else board.bb[WP]
+
+    files = []
+    if f > 0:
+        files.append(FILE_MASKS[f - 1])
+    files.append(FILE_MASKS[f])
+    if f < 7:
+        files.append(FILE_MASKS[f + 1])
+
+    mask = 0
+    for fm in files:
+        if white:
+            # squares with index > r*8+7 -> ranks r+1..7
+            cutoff = (r + 1) * 8
+            mask |= fm & (~((1 << cutoff) - 1))
+        else:
+            # squares with index < r*8 -> ranks 0..r-1
+            cutoff = r * 8
+            mask |= fm & ((1 << cutoff) - 1)
+
+    return (opp_pawns & mask) == 0
 
 
 # Simple piece-square tables (white perspective), centipawns
@@ -455,6 +620,73 @@ PSQT_K: Final = [
     -30,
 ]
 
+PSQT_K_EG: Final = [
+    -50,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -50,
+    -30,
+    -10,
+    0,
+    0,
+    0,
+    0,
+    -10,
+    -30,
+    -30,
+    0,
+    10,
+    15,
+    15,
+    10,
+    0,
+    -30,
+    -30,
+    0,
+    15,
+    20,
+    20,
+    15,
+    0,
+    -30,
+    -30,
+    0,
+    15,
+    20,
+    20,
+    15,
+    0,
+    -30,
+    -30,
+    0,
+    10,
+    15,
+    15,
+    10,
+    0,
+    -30,
+    -30,
+    -10,
+    0,
+    0,
+    0,
+    0,
+    -10,
+    -30,
+    -50,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -50,
+]
+
 
 def evaluate(board: Board) -> int:
     """Return a material + PSQT evaluation in centipawns.
@@ -502,10 +734,141 @@ def evaluate(board: Board) -> int:
     for sq in _iter_bits(board.bb[BQ]):
         score -= PSQT_Q[_mirror_sq(sq)]
 
-    # King tables (middlegame-like)
+    # Game phase blending (0..128 scale)
+    knights = (board.bb[WN] | board.bb[BN]).bit_count()
+    bishops = (board.bb[WB] | board.bb[BB]).bit_count()
+    rooks = (board.bb[WR] | board.bb[BR]).bit_count()
+    queens = (board.bb[WQ] | board.bb[BQ]).bit_count()
+    phase_units = knights + bishops + 2 * rooks + 4 * queens
+    PHASE_TOTAL = 24
+    mg_scaled = max(0, min(128, (phase_units * 128) // PHASE_TOTAL))
+    eg_scaled = 128 - mg_scaled
+
+    # King tables: blend MG/EG
     for sq in _iter_bits(board.bb[WK]):
-        score += PSQT_K[sq]
+        score += (mg_scaled * PSQT_K[sq] + eg_scaled * PSQT_K_EG[sq]) // 128
     for sq in _iter_bits(board.bb[BK]):
-        score -= PSQT_K[_mirror_sq(sq)]
+        idx = _mirror_sq(sq)
+        score -= (mg_scaled * PSQT_K[idx] + eg_scaled * PSQT_K_EG[idx]) // 128
+
+    # Mobility (simple pseudo-legal without self-occupancy)
+    occ_all = 0
+    for bb in board.bb:
+        occ_all |= bb
+    occ_w = board.bb[WP] | board.bb[WN] | board.bb[WB] | board.bb[WR] | board.bb[WQ] | board.bb[WK]
+    occ_b = board.bb[BP] | board.bb[BN] | board.bb[BB] | board.bb[BR] | board.bb[BQ] | board.bb[BK]
+
+    # Knights
+    w_mob = 0
+    b_mob = 0
+    for sq in _iter_bits(board.bb[WN]):
+        w_mob += _count_knight_moves(sq, occ_w)
+    for sq in _iter_bits(board.bb[BN]):
+        b_mob += _count_knight_moves(sq, occ_b)
+    mob_n = (mg_scaled * MOB_N_MG + eg_scaled * MOB_N_EG) // 128
+    score += (w_mob - b_mob) * mob_n
+
+    # Bishops
+    dirs_b = ((-1, -1), (1, -1), (-1, 1), (1, 1))
+    w_mob = 0
+    b_mob = 0
+    for sq in _iter_bits(board.bb[WB]):
+        w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_b)
+    for sq in _iter_bits(board.bb[BB]):
+        b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_b)
+    mob_b = (mg_scaled * MOB_B_MG + eg_scaled * MOB_B_EG) // 128
+    score += (w_mob - b_mob) * mob_b
+
+    # Rooks
+    dirs_r = ((-1, 0), (1, 0), (0, -1), (0, 1))
+    w_mob = 0
+    b_mob = 0
+    for sq in _iter_bits(board.bb[WR]):
+        w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_r)
+    for sq in _iter_bits(board.bb[BR]):
+        b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_r)
+    mob_r = (mg_scaled * MOB_R_MG + eg_scaled * MOB_R_EG) // 128
+    score += (w_mob - b_mob) * mob_r
+
+    # Queens
+    dirs_q = dirs_b + dirs_r
+    w_mob = 0
+    b_mob = 0
+    for sq in _iter_bits(board.bb[WQ]):
+        w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_q)
+    for sq in _iter_bits(board.bb[BQ]):
+        b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_q)
+    mob_q = (mg_scaled * MOB_Q_MG + eg_scaled * MOB_Q_EG) // 128
+    score += (w_mob - b_mob) * mob_q
+
+    # Bishop pair (phase-scaled)
+    bp = (mg_scaled * BISHOP_PAIR_MG + eg_scaled * BISHOP_PAIR_EG) // 128
+    if board.bb[WB].bit_count() >= 2:
+        score += bp
+    if board.bb[BB].bit_count() >= 2:
+        score -= bp
+
+    # Rook file bonuses
+    wpawns = board.bb[WP]
+    bpawns = board.bb[BP]
+    for sq in _iter_bits(board.bb[WR]):
+        f = sq % 8
+        file_mask = FILE_MASKS[f]
+        own_pawn = (wpawns & file_mask) != 0
+        opp_pawn = (bpawns & file_mask) != 0
+        if not own_pawn and not opp_pawn:
+            score += ROOK_OPEN_BONUS
+        elif not own_pawn and opp_pawn:
+            score += ROOK_SEMIOPEN_BONUS
+    for sq in _iter_bits(board.bb[BR]):
+        f = sq % 8
+        file_mask = FILE_MASKS[f]
+        own_pawn = (bpawns & file_mask) != 0
+        opp_pawn = (wpawns & file_mask) != 0
+        if not own_pawn and not opp_pawn:
+            score -= ROOK_OPEN_BONUS
+        elif not own_pawn and opp_pawn:
+            score -= ROOK_SEMIOPEN_BONUS
+
+    # Rooks on seventh rank (from own perspective): white on rank 7 (index 6), black on rank 2 (index 1)
+    for sq in _iter_bits(board.bb[WR]):
+        if (sq // 8) == 6:
+            score += ROOK_SEVENTH_BONUS
+    for sq in _iter_bits(board.bb[BR]):
+        if (sq // 8) == 1:
+            score -= ROOK_SEVENTH_BONUS
+
+    # Knight outposts: in opponent half, supported by own pawn, not attackable by enemy pawns
+    for sq in _iter_bits(board.bb[WN]):
+        r = sq // 8
+        if 3 <= r <= 5:
+            if _pawn_supports_square(board, sq, True) and not _pawn_attacks_square(
+                board, sq, by_white=False
+            ):
+                score += OUTPOST_N_BONUS
+    for sq in _iter_bits(board.bb[BN]):
+        r = sq // 8
+        if 2 <= r <= 4:
+            if _pawn_supports_square(board, sq, False) and not _pawn_attacks_square(
+                board, sq, by_white=True
+            ):
+                score -= OUTPOST_N_BONUS
+
+    # King safety: pawn shield in front of the king
+    score += _king_shield_pawns(board, True) * KING_SHIELD_BONUS
+    score -= _king_shield_pawns(board, False) * KING_SHIELD_BONUS
+
+    # Passed pawns (phase-scaled bonuses by rank)
+    pp_scale = [
+        (mg_scaled * mg + eg_scaled * eg) // 128 for mg, eg in zip(PASSED_PAWN_MG, PASSED_PAWN_EG)
+    ]
+    for sq in _iter_bits(board.bb[WP]):
+        if _is_passed_pawn(board, sq, True):
+            r = sq // 8
+            score += pp_scale[r]
+    for sq in _iter_bits(board.bb[BP]):
+        if _is_passed_pawn(board, sq, False):
+            r = sq // 8
+            score -= pp_scale[7 - r]
 
     return score
