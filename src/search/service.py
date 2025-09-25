@@ -546,25 +546,29 @@ class SearchService:
 
                 board.make_move(m)
 
-                # Late Move Reductions for quiet, non-tactical late moves
-                r = 0
-                if (
-                    d >= 3
-                    and not in_check_now
-                    and not is_capture
-                    and m.promotion is None
-                    and idx >= 4
-                ):
-                    r = 1
-                    child_score_reduced, child_pv = negamax(d - 1 - r, -beta, -alpha, ply + 1)
-                    # If it improves, re-search at full depth (verification)
-                    if child_score_reduced > alpha:
-                        child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
-                    else:
-                        child_score = child_score_reduced
-                else:
+                # Principal Variation Search (PVS)
+                if idx == 0:
+                    # Full window for the first move
                     child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
-                score = -child_score
+                    score = -child_score
+                else:
+                    # Zero-window probe for subsequent moves
+                    search_depth = d - 1
+                    # Apply a conservative LMR reduction on the probe for late quiet moves
+                    if (
+                        d >= 3
+                        and not in_check_now
+                        and not is_capture
+                        and m.promotion is None
+                        and idx >= 4
+                    ):
+                        search_depth -= 1
+                    zw_score, child_pv = negamax(search_depth, -alpha - 1, -alpha, ply + 1)
+                    score = -zw_score
+                    if score > alpha:
+                        # Re-search at full depth, full window
+                        child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
+                        score = -child_score
                 board.unmake_move(m)
 
                 if score > best_score:
