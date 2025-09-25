@@ -42,12 +42,17 @@ class UCIEngine:
         self._last_result: Optional[SearchResult] = None
         self._search_running = False
         self._gen = 0  # generation id to invalidate stale workers
+        # Engine options
+        self.hash_mb: int = 16
+        self.multipv: int = 1
 
     # ---- Command handlers ----
     def cmd_uci(self, write: Writer) -> None:
         write("id name chess_engine")
         write("id author tobiasalexanderwulff")
-        # Options can be declared here later via 'option name ...'
+        # Options for GUIs
+        write("option name Hash type spin default 16 min 1 max 4096")
+        write("option name MultiPV type spin default 1 min 1 max 10")
         write("uciok")
 
     def cmd_isready(self, write: Writer) -> None:
@@ -91,6 +96,42 @@ class UCIEngine:
                     # Silently ignore invalid/illegal moves per typical UCI robustness
                     break
 
+    def cmd_setoption(self, args: List[str]) -> None:
+        # setoption name <name> [value <value>]
+        if not args:
+            return
+        i = 0
+        if args[i] == "name":
+            i += 1
+        name_tokens: List[str] = []
+        while i < len(args) and args[i] != "value":
+            name_tokens.append(args[i])
+            i += 1
+        value_tokens: List[str] = []
+        if i < len(args) and args[i] == "value":
+            i += 1
+            while i < len(args):
+                value_tokens.append(args[i])
+                i += 1
+        name = " ".join(name_tokens).strip().lower()
+        value = " ".join(value_tokens).strip()
+        if name == "hash":
+            try:
+                mb = int(value)
+                if mb < 1:
+                    mb = 1
+                self.hash_mb = min(4096, mb)
+            except ValueError:
+                pass
+        elif name == "multipv":
+            try:
+                k = int(value)
+                if k < 1:
+                    k = 1
+                self.multipv = min(10, k)
+            except ValueError:
+                pass
+
     def cmd_go(self, args: List[str], write: Writer) -> None:
         params = self._parse_go_args(args)
         # Determine effective time/depth
@@ -110,6 +151,7 @@ class UCIEngine:
                 self.game,
                 depth=eff_depth,
                 movetime_ms=eff_movetime,
+                tt_max_entries=self._tt_entries_cap(),
                 on_iter=self._make_iter_callback(gen, write),
             )
             # If stop was requested and handled, or a newer gen started, skip output
@@ -251,7 +293,7 @@ class UCIEngine:
             score = f"cp {cp}"
         pv = " ".join(m.to_uci() for m in res.pv)
         write(
-            f"info depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} "
+            f"info depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} multipv 1 "
             f"score {score} pv {pv}"
         )
 
@@ -279,7 +321,7 @@ class UCIEngine:
                 score = f"cp {score_cp or 0}"
             pv_str = " ".join(m.to_uci() for m in pv)
             write(
-                f"info depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} "
+                f"info depth {depth} seldepth {seldepth} time {time_ms} nodes {nodes} nps {nps} tthits {tthits} hashfull {hashfull} multipv 1 "
                 f"score {score} pv {pv_str}"
             )
 
@@ -290,6 +332,12 @@ class UCIEngine:
             self._stop_event.set()
             self._gen += 1
         # Do not join; thread is daemonized and its output is suppressed via gen
+
+    def _tt_entries_cap(self) -> Optional[int]:
+        # Rough heuristic: 1 MiB -> ~16384 entries (assume ~64 bytes/entry)
+        entries_per_mb = 16384
+        mb = max(1, int(self.hash_mb))
+        return mb * entries_per_mb
 
 
 def _default_writer(line: str) -> None:
@@ -311,6 +359,8 @@ def run_uci() -> None:
             eng.cmd_uci(_default_writer)
         elif cmd == "isready":
             eng.cmd_isready(_default_writer)
+        elif cmd == "setoption":
+            eng.cmd_setoption(args)
         elif cmd == "ucinewgame":
             eng.cmd_ucinewgame()
         elif cmd == "position":
