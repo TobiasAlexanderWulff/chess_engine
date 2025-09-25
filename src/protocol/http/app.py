@@ -39,6 +39,7 @@ class MoveRequest(BaseModel):
 class SearchRequest(BaseModel):
     depth: Optional[int] = Field(default=None, ge=1, le=64)
     movetime_ms: Optional[int] = Field(default=None, ge=1)
+    tt_max_entries: Optional[int] = Field(default=None, ge=1)
 
 
 class GameState(BaseModel):
@@ -143,7 +144,12 @@ def create_app() -> FastAPI:
     async def search(game_id: str, req: SearchRequest) -> Dict[str, Any]:
         game = _require_game(store, game_id)
         service = SearchService()
-        res = service.search(game, depth=req.depth or 1, movetime_ms=req.movetime_ms)
+        res = service.search(
+            game,
+            depth=req.depth or 1,
+            movetime_ms=req.movetime_ms,
+            tt_max_entries=req.tt_max_entries,
+        )
         # Score object: either cp or mate (UCI-style)
         score: Dict[str, Any]
         if res.mate_in is not None:

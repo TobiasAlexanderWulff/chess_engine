@@ -41,7 +41,13 @@ class SearchService:
     This stub will be implemented after legal move generation (Plan 4).
     """
 
-    def search(self, game: Game, depth: int = 1, movetime_ms: Optional[int] = None) -> SearchResult:
+    def search(
+        self,
+        game: Game,
+        depth: int = 1,
+        movetime_ms: Optional[int] = None,
+        tt_max_entries: Optional[int] = None,
+    ) -> SearchResult:
         # Deterministic negamax alpha-beta with quiescence, simple material evaluation,
         # and a transposition table. Includes terminal scoring (mate/stalemate/draw).
         board = game.board
@@ -117,6 +123,21 @@ class SearchService:
                 else:
                     # keep existing
                     pass
+
+            # Enforce optional TT size limit by evicting oldest/shallowest entries
+            if tt_max_entries is not None and tt_max_entries > 0 and len(tt) > tt_max_entries:
+                # Build a list of (gen, depth, key) and evict the worst until size fits
+                victims = sorted(((e.gen, e.depth, k) for k, e in tt.items()))
+                # Number to evict to get at or under the cap
+                to_evict = len(tt) - tt_max_entries
+                for _ in range(to_evict):
+                    if not victims:
+                        break
+                    _, _, k = victims.pop(0)
+                    # Avoid evicting the just-stored key if possible
+                    if k == key and victims:
+                        _, _, k = victims.pop(0)
+                    tt.pop(k, None)
 
         # Killer moves (two per ply) and history heuristic
         killers: Dict[int, List[Move]] = {}
