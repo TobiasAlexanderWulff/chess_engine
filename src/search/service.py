@@ -766,10 +766,7 @@ class SearchService:
             iter_start = time.perf_counter()
             if d == 1 or in_mate_window(last_score):
                 score, pv = negamax(d, -INF, INF)
-                if time_up:
-                    break
-                last_score, last_pv, completed_depth = score, pv, d
-                # Record iteration stats
+                # Record iteration stats even if time ran out during this iteration
                 iters.append(
                     {
                         "depth": d,
@@ -782,6 +779,9 @@ class SearchService:
                 )
                 prev_nodes, prev_qnodes = nodes, qnodes
                 prev_fail_high, prev_fail_low = fail_high, fail_low
+                if time_up:
+                    break
+                last_score, last_pv, completed_depth = score, pv, d
                 continue
 
             window = BASE_WINDOW
@@ -805,9 +805,7 @@ class SearchService:
                 else:
                     break
 
-            if time_up:
-                break
-            last_score, last_pv, completed_depth = score, pv, d
+            # Record iteration stats even if time_up
             iters.append(
                 {
                     "depth": d,
@@ -820,6 +818,9 @@ class SearchService:
             )
             prev_nodes, prev_qnodes = nodes, qnodes
             prev_fail_high, prev_fail_low = fail_high, fail_low
+            if time_up:
+                break
+            last_score, last_pv, completed_depth = score, pv, d
 
         best_move = (
             last_pv[0] if last_pv else (game.legal_moves()[0] if game.legal_moves() else None)
