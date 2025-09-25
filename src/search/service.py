@@ -25,6 +25,12 @@ class SearchResult:
     tt_probes: int
     re_searches: int
     iters: List[Dict[str, int]]
+    tt_exact_hits: int
+    tt_lower_hits: int
+    tt_upper_hits: int
+    tt_stores: int
+    tt_replacements: int
+    tt_size: int
     depth: int
     time_ms: int
 
@@ -43,6 +49,11 @@ class SearchService:
         qnodes = 0
         tt_probes = 0
         tt_hits = 0
+        tt_exact_hits = 0
+        tt_lower_hits = 0
+        tt_upper_hits = 0
+        tt_stores = 0
+        tt_replacements = 0
 
         @dataclass
         class TTEntry:
@@ -51,26 +62,31 @@ class SearchService:
             flag: str  # "EXACT", "LOWER", "UPPER"
             score: int
             best: Optional[Move]
+            gen: int
 
         tt: Dict[int, TTEntry] = {}
+        generation = 0
 
         INF = 10_000_000
         MATE_SCORE = 1_000_000  # mate scores are within +/- MATE_SCORE window
 
         def probe(alpha: int, beta: int, d: int) -> Optional[Tuple[int, Optional[Move]]]:
-            nonlocal tt_probes, tt_hits
+            nonlocal tt_probes, tt_hits, tt_exact_hits, tt_lower_hits, tt_upper_hits
             tt_probes += 1
             e = tt.get(board.zobrist_hash)
             if e is None or e.depth < d:
                 return None
             if e.flag == "EXACT":
                 tt_hits += 1
+                tt_exact_hits += 1
                 return e.score, e.best
             if e.flag == "LOWER" and e.score >= beta:
                 tt_hits += 1
+                tt_lower_hits += 1
                 return e.score, e.best
             if e.flag == "UPPER" and e.score <= alpha:
                 tt_hits += 1
+                tt_upper_hits += 1
                 return e.score, e.best
             return None
 
@@ -87,7 +103,20 @@ class SearchService:
                 flag = "LOWER"
             else:
                 flag = "EXACT"
-            tt[board.zobrist_hash] = TTEntry(board.zobrist_hash, depth_left, flag, score, best)
+            nonlocal tt_stores, tt_replacements
+            key = board.zobrist_hash
+            new_entry = TTEntry(key, depth_left, flag, score, best, generation)
+            existing = tt.get(key)
+            if existing is None:
+                tt[key] = new_entry
+                tt_stores += 1
+            else:
+                if depth_left > existing.depth or existing.gen + 2 <= generation:
+                    tt[key] = new_entry
+                    tt_replacements += 1
+                else:
+                    # keep existing
+                    pass
 
         # Killer moves (two per ply) and history heuristic
         killers: Dict[int, List[Move]] = {}
@@ -667,6 +696,7 @@ class SearchService:
             return abs(sc) >= MATE_SCORE - 512
 
         for d in range(1, max(1, depth) + 1):
+            generation += 1
             iter_start = time.perf_counter()
             if d == 1 or in_mate_window(last_score):
                 score, pv = negamax(d, -INF, INF)
@@ -751,6 +781,12 @@ class SearchService:
             tt_probes=tt_probes,
             re_searches=re_searches,
             iters=iters,
+            tt_exact_hits=tt_exact_hits,
+            tt_lower_hits=tt_lower_hits,
+            tt_upper_hits=tt_upper_hits,
+            tt_stores=tt_stores,
+            tt_replacements=tt_replacements,
+            tt_size=len(tt),
             depth=completed_depth,
             time_ms=int((time.perf_counter() - start) * 1000),
         )
