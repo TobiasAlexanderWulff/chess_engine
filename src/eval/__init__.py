@@ -46,6 +46,7 @@ ROOK_SEMIOPEN_BONUS: Final = 8
 ROOK_OPEN_BONUS: Final = 14
 KING_SHIELD_BONUS: Final = 6  # per pawn in king shield ring
 ROOK_SEVENTH_BONUS: Final = 20
+OUTPOST_N_BONUS: Final = 25
 
 
 def _popcount(x: int) -> int:
@@ -133,6 +134,54 @@ def _king_shield_pawns(board: Board, white: bool) -> int:
                 if ((pawns >> sq) & 1) != 0:
                     total += 1
     return total
+
+
+def _pawn_attacks_square(board: Board, sq: int, by_white: bool) -> bool:
+    f = sq % 8
+    if by_white:
+        # White pawns attack from behind (downwards relative to sq): sq-7 and sq-9
+        if f > 0:
+            o = sq - 9
+            if o >= 0 and ((board.bb[WP] >> o) & 1):
+                return True
+        if f < 7:
+            o = sq - 7
+            if o >= 0 and ((board.bb[WP] >> o) & 1):
+                return True
+    else:
+        # Black pawns attack from ahead (upwards relative to sq): sq+7 and sq+9
+        if f < 7:
+            o = sq + 9
+            if o <= 63 and ((board.bb[BP] >> o) & 1):
+                return True
+        if f > 0:
+            o = sq + 7
+            if o <= 63 and ((board.bb[BP] >> o) & 1):
+                return True
+    return False
+
+
+def _pawn_supports_square(board: Board, sq: int, white: bool) -> bool:
+    f = sq % 8
+    if white:
+        if f > 0:
+            o = sq - 9
+            if o >= 0 and ((board.bb[WP] >> o) & 1):
+                return True
+        if f < 7:
+            o = sq - 7
+            if o >= 0 and ((board.bb[WP] >> o) & 1):
+                return True
+    else:
+        if f < 7:
+            o = sq + 9
+            if o <= 63 and ((board.bb[BP] >> o) & 1):
+                return True
+        if f > 0:
+            o = sq + 7
+            if o <= 63 and ((board.bb[BP] >> o) & 1):
+                return True
+    return False
 
 
 # Simple piece-square tables (white perspective), centipawns
@@ -755,6 +804,22 @@ def evaluate(board: Board) -> int:
     for sq in _iter_bits(board.bb[BR]):
         if (sq // 8) == 1:
             score -= ROOK_SEVENTH_BONUS
+
+    # Knight outposts: in opponent half, supported by own pawn, not attackable by enemy pawns
+    for sq in _iter_bits(board.bb[WN]):
+        r = sq // 8
+        if 3 <= r <= 5:
+            if _pawn_supports_square(board, sq, True) and not _pawn_attacks_square(
+                board, sq, by_white=False
+            ):
+                score += OUTPOST_N_BONUS
+    for sq in _iter_bits(board.bb[BN]):
+        r = sq // 8
+        if 2 <= r <= 4:
+            if _pawn_supports_square(board, sq, False) and not _pawn_attacks_square(
+                board, sq, by_white=True
+            ):
+                score -= OUTPOST_N_BONUS
 
     # King safety: pawn shield in front of the king
     score += _king_shield_pawns(board, True) * KING_SHIELD_BONUS
