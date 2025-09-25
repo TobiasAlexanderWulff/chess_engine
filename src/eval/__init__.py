@@ -32,10 +32,15 @@ R_VAL: Final = 500
 Q_VAL: Final = 900
 
 # Heuristic weights (centipawns)
-MOB_N: Final = 2
-MOB_B: Final = 2
-MOB_R: Final = 2
-MOB_Q: Final = 1
+# Mobility weights (middlegame / endgame)
+MOB_N_MG: Final = 2
+MOB_N_EG: Final = 1
+MOB_B_MG: Final = 2
+MOB_B_EG: Final = 3
+MOB_R_MG: Final = 2
+MOB_R_EG: Final = 2
+MOB_Q_MG: Final = 1
+MOB_Q_EG: Final = 1
 BISHOP_PAIR_BONUS: Final = 30
 ROOK_SEMIOPEN_BONUS: Final = 8
 ROOK_OPEN_BONUS: Final = 14
@@ -533,6 +538,73 @@ PSQT_K: Final = [
     -30,
 ]
 
+PSQT_K_EG: Final = [
+    -50,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -50,
+    -30,
+    -10,
+    0,
+    0,
+    0,
+    0,
+    -10,
+    -30,
+    -30,
+    0,
+    10,
+    15,
+    15,
+    10,
+    0,
+    -30,
+    -30,
+    0,
+    15,
+    20,
+    20,
+    15,
+    0,
+    -30,
+    -30,
+    0,
+    15,
+    20,
+    20,
+    15,
+    0,
+    -30,
+    -30,
+    0,
+    10,
+    15,
+    15,
+    10,
+    0,
+    -30,
+    -30,
+    -10,
+    0,
+    0,
+    0,
+    0,
+    -10,
+    -30,
+    -50,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -50,
+]
+
 
 def evaluate(board: Board) -> int:
     """Return a material + PSQT evaluation in centipawns.
@@ -580,11 +652,22 @@ def evaluate(board: Board) -> int:
     for sq in _iter_bits(board.bb[BQ]):
         score -= PSQT_Q[_mirror_sq(sq)]
 
-    # King tables (middlegame-like)
+    # Game phase blending (0..128 scale)
+    knights = (board.bb[WN] | board.bb[BN]).bit_count()
+    bishops = (board.bb[WB] | board.bb[BB]).bit_count()
+    rooks = (board.bb[WR] | board.bb[BR]).bit_count()
+    queens = (board.bb[WQ] | board.bb[BQ]).bit_count()
+    phase_units = knights + bishops + 2 * rooks + 4 * queens
+    PHASE_TOTAL = 24
+    mg_scaled = max(0, min(128, (phase_units * 128) // PHASE_TOTAL))
+    eg_scaled = 128 - mg_scaled
+
+    # King tables: blend MG/EG
     for sq in _iter_bits(board.bb[WK]):
-        score += PSQT_K[sq]
+        score += (mg_scaled * PSQT_K[sq] + eg_scaled * PSQT_K_EG[sq]) // 128
     for sq in _iter_bits(board.bb[BK]):
-        score -= PSQT_K[_mirror_sq(sq)]
+        idx = _mirror_sq(sq)
+        score -= (mg_scaled * PSQT_K[idx] + eg_scaled * PSQT_K_EG[idx]) // 128
 
     # Mobility (simple pseudo-legal without self-occupancy)
     occ_all = 0
@@ -600,7 +683,8 @@ def evaluate(board: Board) -> int:
         w_mob += _count_knight_moves(sq, occ_w)
     for sq in _iter_bits(board.bb[BN]):
         b_mob += _count_knight_moves(sq, occ_b)
-    score += (w_mob - b_mob) * MOB_N
+    mob_n = (mg_scaled * MOB_N_MG + eg_scaled * MOB_N_EG) // 128
+    score += (w_mob - b_mob) * mob_n
 
     # Bishops
     dirs_b = ((-1, -1), (1, -1), (-1, 1), (1, 1))
@@ -610,7 +694,8 @@ def evaluate(board: Board) -> int:
         w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_b)
     for sq in _iter_bits(board.bb[BB]):
         b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_b)
-    score += (w_mob - b_mob) * MOB_B
+    mob_b = (mg_scaled * MOB_B_MG + eg_scaled * MOB_B_EG) // 128
+    score += (w_mob - b_mob) * mob_b
 
     # Rooks
     dirs_r = ((-1, 0), (1, 0), (0, -1), (0, 1))
@@ -620,7 +705,8 @@ def evaluate(board: Board) -> int:
         w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_r)
     for sq in _iter_bits(board.bb[BR]):
         b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_r)
-    score += (w_mob - b_mob) * MOB_R
+    mob_r = (mg_scaled * MOB_R_MG + eg_scaled * MOB_R_EG) // 128
+    score += (w_mob - b_mob) * mob_r
 
     # Queens
     dirs_q = dirs_b + dirs_r
@@ -630,7 +716,8 @@ def evaluate(board: Board) -> int:
         w_mob += _count_slider_moves(sq, occ_w, occ_all, dirs_q)
     for sq in _iter_bits(board.bb[BQ]):
         b_mob += _count_slider_moves(sq, occ_b, occ_all, dirs_q)
-    score += (w_mob - b_mob) * MOB_Q
+    mob_q = (mg_scaled * MOB_Q_MG + eg_scaled * MOB_Q_EG) // 128
+    score += (w_mob - b_mob) * mob_q
 
     # Bishop pair
     if board.bb[WB].bit_count() >= 2:
