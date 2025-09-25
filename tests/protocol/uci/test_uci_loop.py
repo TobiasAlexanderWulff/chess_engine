@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Callable
+import time
 
 from src.protocol.uci.loop import UCIEngine
 
@@ -34,6 +35,11 @@ def test_position_and_go_depth():
     # Depth-limited search should produce a bestmove and an info line
     out: List[str] = []
     eng.cmd_go(["depth", "1"], capture_writer(out))
+
+    def has_bestmove() -> bool:
+        return any(line.startswith("bestmove ") for line in out)
+
+    _wait_until(has_bestmove, timeout_ms=2000)
     assert any(line.startswith("info depth ") for line in out)
     assert any(line.startswith("bestmove ") for line in out)
 
@@ -45,5 +51,19 @@ def test_position_fen_and_go_movetime():
     eng.cmd_position(["fen", *fen.split()])
     out: List[str] = []
     eng.cmd_go(["movetime", "10"], capture_writer(out))
+
+    def has_bestmove2() -> bool:
+        return any(line.startswith("bestmove ") for line in out)
+
+    _wait_until(has_bestmove2, timeout_ms=2000)
     assert any(line.startswith("info depth ") for line in out)
     assert any(line.startswith("bestmove ") for line in out)
+
+
+def _wait_until(predicate: Callable[[], bool], timeout_ms: int = 1000) -> None:
+    deadline = time.time() + (timeout_ms / 1000)
+    while time.time() < deadline:
+        if predicate():
+            return
+        time.sleep(0.01)
+    # Allow final check for assertion to fail with test's own message

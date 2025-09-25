@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 
@@ -29,6 +30,13 @@ class UCIEngine:
     def __init__(self) -> None:
         self.game: Game = Game.new()
         self.search = SearchService()
+        # Async search state
+        self._search_thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+        self._result_lock = threading.Lock()
+        self._last_result: Optional[SearchResult] = None
+        self._search_running = False
+        self._gen = 0  # generation id to invalidate stale workers
 
     # ---- Command handlers ----
     def cmd_uci(self, write: Writer) -> None:
@@ -42,6 +50,8 @@ class UCIEngine:
 
     def cmd_ucinewgame(self) -> None:
         self.game = Game.new()
+        # Cancel any ongoing search
+        self._cancel_running_search()
 
     def cmd_position(self, args: List[str]) -> None:
         # position [startpos | fen <FEN> ] [moves m1 m2 ...]
@@ -78,15 +88,54 @@ class UCIEngine:
 
     def cmd_go(self, args: List[str], write: Writer) -> None:
         params = self._parse_go_args(args)
-        # Execute search synchronously; later we can make this interruptible.
-        res = self.search.search(
-            self.game,
-            depth=params.depth or 1,
-            movetime_ms=params.movetime_ms,
-        )
-        self._emit_info(res, write)
-        best = res.best_move.to_uci() if res.best_move else "(none)"
-        write(f"bestmove {best}")
+        # If a search is already running, cancel and start fresh
+        self._cancel_running_search()
+        self._stop_event.clear()
+        with self._result_lock:
+            self._last_result = None
+        self._search_running = True
+        self._gen += 1
+        gen = self._gen
+
+        def worker() -> None:
+            # Run search (blocking) and publish result if still current
+            res = self.search.search(
+                self.game,
+                depth=params.depth or 1,
+                movetime_ms=params.movetime_ms,
+            )
+            # If stop was requested and handled, or a newer gen started, skip output
+            if self._stop_event.is_set() or gen != self._gen:
+                # Preserve last_result for possible consumers but avoid emitting
+                with self._result_lock:
+                    self._last_result = res
+                self._search_running = False
+                return
+            with self._result_lock:
+                self._last_result = res
+            self._emit_info(res, write)
+            best = res.best_move.to_uci() if res.best_move else "(none)"
+            write(f"bestmove {best}")
+            self._search_running = False
+
+        self._search_thread = threading.Thread(target=worker, name="uci-search", daemon=True)
+        self._search_thread.start()
+
+    def cmd_stop(self, write: Writer) -> None:
+        # Signal stop; emit best known move immediately
+        self._stop_event.set()
+        self._gen += 1  # invalidate any current worker's output
+        best_uci: str
+        with self._result_lock:
+            res = self._last_result
+        if res is None:
+            # Fall back to a quick legal move if no result yet
+            legal = self.game.legal_moves()
+            best_uci = legal[0].to_uci() if legal else "(none)"
+        else:
+            best_uci = res.best_move.to_uci() if res.best_move else "(none)"
+        write(f"bestmove {best_uci}")
+        # Leave background thread to finish silently (output suppressed by gen)
 
     # ---- Utilities ----
     def _parse_go_args(self, args: List[str]) -> GoParams:
@@ -128,6 +177,12 @@ class UCIEngine:
             f"info depth {depth} time {time_ms} nodes {nodes} nps {nps} " f"score {score} pv {pv}"
         )
 
+    def _cancel_running_search(self) -> None:
+        if self._search_running:
+            self._stop_event.set()
+            self._gen += 1
+        # Do not join; thread is daemonized and its output is suppressed via gen
+
 
 def _default_writer(line: str) -> None:
     # Ensure newline termination and immediate flush
@@ -155,8 +210,7 @@ def run_uci() -> None:
         elif cmd == "go":
             eng.cmd_go(args, _default_writer)
         elif cmd == "stop":
-            # Synchronous search; nothing to stop yet.
-            pass
+            eng.cmd_stop(_default_writer)
         elif cmd == "quit":
             break
         # Ignore unknown commands per UCI convention
