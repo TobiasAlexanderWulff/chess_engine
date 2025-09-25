@@ -304,10 +304,15 @@ class SearchService:
                 score = base if board.side_to_move == "w" else -base
                 return score, []
 
+            # In-check extension: extend search by 1 ply when side to move is in check
+            in_check_now = board.in_check()
+            if d > 0 and in_check_now:
+                d += 1
+
             # No legal moves: mate or stalemate
             legal_precheck = board.generate_legal_moves()
             if not legal_precheck:
-                if board.in_check():
+                if in_check_now:
                     # Checkmated: distance-to-mate scores prefer quicker mates
                     return -MATE_SCORE + ply, []
                 # Stalemate
@@ -429,7 +434,6 @@ class SearchService:
             best_line: List[Move] = []
             alpha_orig = alpha
             best_move: Optional[Move] = None
-            in_check_now = board.in_check()
             # Stand-pat for futility thresholds (side to move perspective)
             base_eval = evaluate(board)
             stand_pat = base_eval if board.side_to_move == "w" else -base_eval
