@@ -8,6 +8,7 @@ from src.engine.game import Game
 from src.engine.move import Move
 from src.eval import evaluate
 from src.engine.board import WP, WN, WB, WR, WQ, WK, BP, BN, BB, BR, BQ, BK
+from src.engine.zobrist import compute_hash_from_scratch
 
 
 @dataclass
@@ -337,6 +338,35 @@ class SearchService:
                     return score, ([m] if m else [])
                 # Otherwise continue but prefer the stored move for ordering
                 tt_move = m
+
+            # Null-move pruning (conservative): when not in check, try a null move
+            # to prove a cutoff. Skip near-mate scores and zugzwang-like material.
+            if d >= 3 and not in_check_now and beta < MATE_SCORE - 1024:
+                # Zugzwang guard: require at least one non-pawn piece for side to move
+                if board.side_to_move == "w":
+                    non_pawn = board.bb[WN] | board.bb[WB] | board.bb[WR] | board.bb[WQ]
+                else:
+                    non_pawn = board.bb[BN] | board.bb[BB] | board.bb[BR] | board.bb[BQ]
+                if non_pawn != 0:
+                    prev_stm = board.side_to_move
+                    prev_ep = board.ep_square
+                    prev_hash = board.zobrist_hash
+                    # Make null move: swap side, clear ep square, recompute hash
+                    board.side_to_move = "b" if board.side_to_move == "w" else "w"
+                    board.ep_square = None
+                    board.zobrist_hash = compute_hash_from_scratch(board)
+
+                    R = 2
+                    null_score, _ = negamax(d - 1 - R, -beta, -beta + 1, ply + 1)
+                    score_nm = -null_score
+
+                    # Undo null move
+                    board.side_to_move = prev_stm
+                    board.ep_square = prev_ep
+                    board.zobrist_hash = prev_hash
+
+                    if score_nm >= beta:
+                        return beta, []
 
             legal = legal_precheck
 
