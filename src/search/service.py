@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 import time
 
 from src.engine.game import Game
@@ -52,6 +52,20 @@ class SearchService:
         enable_nmp: bool = True,
         enable_lmr: bool = True,
         enable_futility: bool = True,
+        on_iter: Optional[
+            Callable[
+                [
+                    int,  # depth
+                    int,  # time_ms since start
+                    int,  # nodes (cumulative)
+                    int,  # qnodes (cumulative)
+                    Optional[int],  # score_cp
+                    Optional[int],  # mate_in
+                    List[Move],  # pv
+                ],
+                None,
+            ]
+        ] = None,
     ) -> SearchResult:
         # Deterministic negamax alpha-beta with quiescence, simple material evaluation,
         # and a transposition table. Includes terminal scoring (mate/stalemate/draw).
@@ -777,6 +791,22 @@ class SearchService:
                         "fail_low": fail_low - prev_fail_low,
                     }
                 )
+                # Streaming callback with cumulative metrics
+                if on_iter is not None:
+                    elapsed_ms_total = int((time.perf_counter() - start) * 1000)
+                    # Derive mate_in if within mate window
+                    mate_in_cb: Optional[int] = None
+                    if abs(score) >= MATE_SCORE - 128:
+                        mate_in_cb = (
+                            (MATE_SCORE - score + 1) // 2
+                            if score > 0
+                            else -((MATE_SCORE + score + 1) // 2)
+                        )
+                    score_cp_cb: Optional[int] = None if mate_in_cb is not None else score
+                    try:
+                        on_iter(d, elapsed_ms_total, nodes, qnodes, score_cp_cb, mate_in_cb, pv)
+                    except Exception:
+                        pass
                 prev_nodes, prev_qnodes = nodes, qnodes
                 prev_fail_high, prev_fail_low = fail_high, fail_low
                 if time_up:
@@ -817,6 +847,21 @@ class SearchService:
                     "fail_low": fail_low - prev_fail_low,
                 }
             )
+            # Streaming callback with cumulative metrics
+            if on_iter is not None:
+                elapsed_ms_total = int((time.perf_counter() - start) * 1000)
+                mate_in_cb2: Optional[int] = None
+                if abs(score) >= MATE_SCORE - 128:
+                    mate_in_cb2 = (
+                        (MATE_SCORE - score + 1) // 2
+                        if score > 0
+                        else -((MATE_SCORE + score + 1) // 2)
+                    )
+                score_cp_cb2: Optional[int] = None if mate_in_cb2 is not None else score
+                try:
+                    on_iter(d, elapsed_ms_total, nodes, qnodes, score_cp_cb2, mate_in_cb2, pv)
+                except Exception:
+                    pass
             prev_nodes, prev_qnodes = nodes, qnodes
             prev_fail_high, prev_fail_low = fail_high, fail_low
             if time_up:

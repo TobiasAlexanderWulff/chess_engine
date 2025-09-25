@@ -110,6 +110,7 @@ class UCIEngine:
                 self.game,
                 depth=eff_depth,
                 movetime_ms=eff_movetime,
+                on_iter=self._make_iter_callback(gen, write),
             )
             # If stop was requested and handled, or a newer gen started, skip output
             if self._stop_event.is_set() or gen != self._gen:
@@ -249,6 +250,33 @@ class UCIEngine:
         write(
             f"info depth {depth} time {time_ms} nodes {nodes} nps {nps} " f"score {score} pv {pv}"
         )
+
+    def _make_iter_callback(self, gen: int, write: Writer):
+        def _cb(
+            depth: int,
+            time_ms: int,
+            nodes: int,
+            qnodes: int,
+            score_cp: Optional[int],
+            mate_in: Optional[int],
+            pv: List[Move],
+        ) -> None:
+            # Suppress if search was stopped or superseded
+            if self._stop_event.is_set() or gen != self._gen:
+                return
+            # Build and emit UCI info line
+            nps = int(nodes * 1000 / max(1, time_ms))
+            if mate_in is not None:
+                score = f"mate {mate_in}"
+            else:
+                score = f"cp {score_cp or 0}"
+            pv_str = " ".join(m.to_uci() for m in pv)
+            write(
+                f"info depth {depth} time {time_ms} nodes {nodes} nps {nps} "
+                f"score {score} pv {pv_str}"
+            )
+
+        return _cb
 
     def _cancel_running_search(self) -> None:
         if self._search_running:
