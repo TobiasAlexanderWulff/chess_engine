@@ -780,6 +780,7 @@ class SearchService:
                 prev_nodes, prev_qnodes = nodes, qnodes
                 prev_fail_high, prev_fail_low = fail_high, fail_low
                 if time_up:
+                    last_score, last_pv, completed_depth = score, pv, d
                     break
                 last_score, last_pv, completed_depth = score, pv, d
                 continue
@@ -819,6 +820,7 @@ class SearchService:
             prev_nodes, prev_qnodes = nodes, qnodes
             prev_fail_high, prev_fail_low = fail_high, fail_low
             if time_up:
+                last_score, last_pv, completed_depth = score, pv, d
                 break
             last_score, last_pv, completed_depth = score, pv, d
 
