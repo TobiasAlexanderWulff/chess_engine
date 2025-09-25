@@ -17,6 +17,11 @@ Writer = Callable[[str], None]
 class GoParams:
     depth: Optional[int] = None
     movetime_ms: Optional[int] = None
+    wtime: Optional[int] = None
+    btime: Optional[int] = None
+    winc: Optional[int] = None
+    binc: Optional[int] = None
+    movestogo: Optional[int] = None
 
 
 class UCIEngine:
@@ -88,6 +93,8 @@ class UCIEngine:
 
     def cmd_go(self, args: List[str], write: Writer) -> None:
         params = self._parse_go_args(args)
+        # Determine effective time/depth
+        eff_depth, eff_movetime = self._select_time_and_depth(params)
         # If a search is already running, cancel and start fresh
         self._cancel_running_search()
         self._stop_event.clear()
@@ -101,8 +108,8 @@ class UCIEngine:
             # Run search (blocking) and publish result if still current
             res = self.search.search(
                 self.game,
-                depth=params.depth or 1,
-                movetime_ms=params.movetime_ms,
+                depth=eff_depth,
+                movetime_ms=eff_movetime,
             )
             # If stop was requested and handled, or a newer gen started, skip output
             if self._stop_event.is_set() or gen != self._gen:
@@ -157,9 +164,75 @@ class UCIEngine:
                     pass
                 i += 2
                 continue
+            if tok == "wtime" and i + 1 < len(args):
+                try:
+                    gp.wtime = int(args[i + 1])
+                except ValueError:
+                    pass
+                i += 2
+                continue
+            if tok == "btime" and i + 1 < len(args):
+                try:
+                    gp.btime = int(args[i + 1])
+                except ValueError:
+                    pass
+                i += 2
+                continue
+            if tok == "winc" and i + 1 < len(args):
+                try:
+                    gp.winc = int(args[i + 1])
+                except ValueError:
+                    pass
+                i += 2
+                continue
+            if tok == "binc" and i + 1 < len(args):
+                try:
+                    gp.binc = int(args[i + 1])
+                except ValueError:
+                    pass
+                i += 2
+                continue
+            if tok == "movestogo" and i + 1 < len(args):
+                try:
+                    gp.movestogo = int(args[i + 1])
+                except ValueError:
+                    pass
+                i += 2
+                continue
             # Ignore unsupported time controls for now
             i += 1
         return gp
+
+    def _select_time_and_depth(self, gp: GoParams) -> tuple[int, Optional[int]]:
+        # Precedence: explicit movetime > (wtime/btime based) > depth fallback.
+        if gp.movetime_ms is not None:
+            depth = gp.depth or 64
+            return depth, max(1, gp.movetime_ms)
+
+        # Use clock-based allocation when any time field is provided
+        if any(v is not None for v in (gp.wtime, gp.btime, gp.winc, gp.binc, gp.movestogo)):
+            stm_white = self.game.board.side_to_move == "w"
+            remaining = gp.wtime if stm_white else gp.btime
+            inc = gp.winc if stm_white else gp.binc
+            if remaining is None:
+                # If missing for side to move, fall back to depth only
+                return gp.depth or 8, None
+            moves_left = gp.movestogo if (gp.movestogo and gp.movestogo > 0) else 30
+            base = remaining // max(1, moves_left)
+            bonus = int((inc or 0) * 0.5)
+            alloc = base + bonus
+            # Clamp allocation conservatively
+            safety_margin = 50
+            max_cap = min(int(remaining * 0.7), max(0, remaining - safety_margin))
+            if max_cap <= 0:
+                alloc = max(1, remaining - 1)
+            else:
+                alloc = max(10, min(alloc, max_cap))
+            depth = gp.depth or 64  # let time primarily govern
+            return depth, alloc
+
+        # No time info: depth-only search
+        return gp.depth or 1, None
 
     def _emit_info(self, res: SearchResult, write: Writer) -> None:
         # Compute UCI-style info line (single snapshot after search)
