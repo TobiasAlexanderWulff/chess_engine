@@ -47,6 +47,11 @@ class SearchService:
         depth: int = 1,
         movetime_ms: Optional[int] = None,
         tt_max_entries: Optional[int] = None,
+        *,
+        enable_pvs: bool = True,
+        enable_nmp: bool = True,
+        enable_lmr: bool = True,
+        enable_futility: bool = True,
     ) -> SearchResult:
         # Deterministic negamax alpha-beta with quiescence, simple material evaluation,
         # and a transposition table. Includes terminal scoring (mate/stalemate/draw).
@@ -392,7 +397,7 @@ class SearchService:
 
             # Null-move pruning (conservative): when not in check, try a null move
             # to prove a cutoff. Skip near-mate scores and zugzwang-like material.
-            if d >= 3 and not in_check_now and beta < MATE_SCORE - 1024:
+            if enable_nmp and d >= 3 and not in_check_now and beta < MATE_SCORE - 1024:
                 # Zugzwang guard: require at least one non-pawn piece for side to move
                 if board.side_to_move == "w":
                     non_pawn = board.bb[WN] | board.bb[WB] | board.bb[WR] | board.bb[WQ]
@@ -531,7 +536,8 @@ class SearchService:
                 # Futility pruning at the horizon (very conservative)
                 # Skip quiet moves unlikely to raise alpha at depth 1
                 if (
-                    d == 1
+                    enable_futility
+                    and d == 1
                     and not in_check_now
                     and not is_capture
                     and m.promotion is None
@@ -547,7 +553,7 @@ class SearchService:
                 board.make_move(m)
 
                 # Principal Variation Search (PVS)
-                if idx == 0:
+                if not enable_pvs or idx == 0:
                     # Full window for the first move
                     child_score, child_pv = negamax(d - 1, -beta, -alpha, ply + 1)
                     score = -child_score
@@ -556,7 +562,8 @@ class SearchService:
                     search_depth = d - 1
                     # Apply a conservative LMR reduction on the probe for late quiet moves
                     if (
-                        d >= 3
+                        enable_lmr
+                        and d >= 3
                         and not in_check_now
                         and not is_capture
                         and m.promotion is None
