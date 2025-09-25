@@ -41,7 +41,8 @@ MOB_R_MG: Final = 2
 MOB_R_EG: Final = 2
 MOB_Q_MG: Final = 1
 MOB_Q_EG: Final = 1
-BISHOP_PAIR_BONUS: Final = 30
+BISHOP_PAIR_MG: Final = 20
+BISHOP_PAIR_EG: Final = 40
 ROOK_SEMIOPEN_BONUS: Final = 8
 ROOK_OPEN_BONUS: Final = 14
 KING_SHIELD_BONUS: Final = 6  # per pawn in king shield ring
@@ -769,11 +770,12 @@ def evaluate(board: Board) -> int:
     mob_q = (mg_scaled * MOB_Q_MG + eg_scaled * MOB_Q_EG) // 128
     score += (w_mob - b_mob) * mob_q
 
-    # Bishop pair
+    # Bishop pair (phase-scaled)
+    bp = (mg_scaled * BISHOP_PAIR_MG + eg_scaled * BISHOP_PAIR_EG) // 128
     if board.bb[WB].bit_count() >= 2:
-        score += BISHOP_PAIR_BONUS
+        score += bp
     if board.bb[BB].bit_count() >= 2:
-        score -= BISHOP_PAIR_BONUS
+        score -= bp
 
     # Rook file bonuses
     wpawns = board.bb[WP]
