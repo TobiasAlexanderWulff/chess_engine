@@ -62,10 +62,33 @@ class Board:
 
     @classmethod
     def startpos(cls) -> "Board":
+        """Create a board initialized to the standard chess starting position.
+
+        Returns:
+            Board: Board instance representing the standard starting position.
+        """
         return cls.from_fen(STARTPOS_FEN)
 
     @classmethod
     def from_fen(cls, fen: str) -> "Board":
+        """Create a board from a Forsyth–Edwards Notation (FEN) string.
+
+        Args:
+            fen (str): FEN string describing the position to load.
+
+        Returns:
+            Board: Board instance initialized with state encoded in ``fen``.
+
+        Raises:
+            ValueError: If ``fen`` is empty, has the wrong number of fields, or
+                contains invalid piece placement, castling rights, en passant
+                square, or move counters.
+
+        Notes:
+            The parser normalizes castling rights ordering, converts the
+            en-passant target to a square index, and seeds the incremental
+            Zobrist hash for deterministic hashing.
+        """
         if not fen or not isinstance(fen, str):
             raise ValueError("FEN must be a non-empty string")
         parts = fen.strip().split()
@@ -149,6 +172,11 @@ class Board:
         return board
 
     def to_fen(self) -> str:
+        """Serialize the current position into a normalized FEN string.
+
+        Returns:
+            str: FEN string describing the board state.
+        """
         # Piece placement
         ranks_str: List[str] = []
         for rank_idx in range(7, -1, -1):  # 7..0 maps to ranks 8..1
@@ -175,6 +203,15 @@ class Board:
         return f"{placement} {stm} {castling} {ep} {self.halfmove_clock} {self.fullmove_number}"
 
     def _piece_char_at(self, sq: int) -> Optional[str]:
+        """Return the piece character occupying a square.
+
+        Args:
+            sq (int): Zero-based square index to inspect.
+
+        Returns:
+            Optional[str]: Upper- or lowercase piece symbol when occupied, or
+                ``None`` when empty.
+        """
         # White pieces first (uppercase), then black
         for idx in PIECE_ORDER:
             if _get_bit(self.bb[idx], sq):
@@ -182,12 +219,16 @@ class Board:
         return None
 
     def generate_legal_moves(self) -> List[Move]:
-        """Return pseudo-legal moves (pawns, knights, king) with basic legality.
+        """Return pseudo-legal moves with minimal legality filtering.
 
-        Scaffolding for Plan 3: generate pawn pushes (single/double, promotions),
-        pawn captures (promotions), knights, and king moves. Applies basic
-        in-check filtering by rejecting moves that leave own king attacked.
-        En passant, castling, and sliders are not implemented yet.
+        Returns:
+            List[Move]: Generated moves for the side to move.
+
+        Notes:
+            Currently generates pawn pushes and captures (with promotions),
+            knight moves, king moves, sliders, en passant captures, and basic
+            castling rules. Legality filtering rejects moves that leave the own
+            king in check but other advanced rules may be incomplete.
         """
         moves: List[Move] = []
         PROMOS = ("q", "r", "b", "n")
