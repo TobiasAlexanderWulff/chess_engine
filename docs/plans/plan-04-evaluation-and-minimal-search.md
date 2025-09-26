@@ -27,3 +27,22 @@ Add a simple, deterministic search with a basic evaluation function.
 
 ## Risks/Notes
 - Avoid premature optimization; keep code clear for later TT integration.
+
+## Status
+- ✅ Material and PSQT tables implemented with phase-aware weighting, mobility, king-safety,
+  pawn structure, bishop pair, rook activity, and passed pawn heuristics.
+- ✅ Deterministic alpha-beta search with quiescence, repetition detection, and PV extraction is
+  live in `SearchService` along with tactical/endgame tests.
+- ✅ Basic move ordering (captures, MVV-LVA) and SEE guardrails exist as part of the
+  implementation.
+- 🚧 Integration with transposition tables, killer/history ordering, and aspiration windows now
+  lives in Plan 7 (implemented but tracked there for tuning/metrics).
+
+## Next Actions
+- Harden evaluation unit tests around phase weighting and pawn heuristics to protect against
+  regressions introduced by Plan 7 tuning.
+- Document representative evaluation scores for standard positions to inform future tuning.
+
+## Changelog
+- 2025-09-26: Marked deliverables complete, noted additional heuristics shipped, and linked
+  advanced search enhancements to Plan 7 ownership.

@@ -31,3 +31,28 @@ Increase playing strength and performance with classic engine features.
 
 ## Risks/Notes
 - Avoid incorrect cutoffs; preserve correctness and determinism.
+
+## Status
+- ✅ Zobrist-based transposition table with replacement/aging, configurable size caps, and
+  instrumentation (hits, lower/upper/exact counts, replacements).
+- ✅ Iterative deepening with aspiration windows, fail-high/low expansion, and cumulative search
+  telemetry (nodes, qnodes, seldepth, hashfull, TT stats, fail counts, re-searches).
+- ✅ Killer moves, history heuristic, SEE-based move ordering, futility pruning, and TT move
+  prioritization wired into the search loop.
+- ✅ Time management via `movetime_ms`, repetition-aware draw detection, and TT-bound search
+  status reporting exposed through the HTTP API.
+- 🚧 Benchmark baseline, comparative metrics, and tuning narrative remain outstanding.
+- 🚧 Additional pruning ideas (LMR/NMP toggles) exist in code but require documentation of
+  heuristics and guardrails.
+
+## Next Actions
+- Capture benchmark suite results (nodes/s, depth vs. time, TT hit rate) before/after tweaks and
+  record them under Plan 7.
+- Document heuristics currently guarded by flags (`enable_pvs`, `enable_nmp`, `enable_lmr`,
+  `enable_futility`) and define default policy.
+- Evaluate remaining enhancements (e.g., late-move reductions tuning, singular extensions) and
+  decide on scope.
+
+## Changelog
+- 2025-09-26: Updated scope to reflect shipped TT, ordering, aspiration, and telemetry; noted
+  outstanding benchmarking/tuning work.

@@ -163,6 +163,7 @@ def create_app() -> FastAPI:
             "pv": [m.to_uci() for m in res.pv],
             "nodes": res.nodes,
             "qnodes": res.qnodes,
+            "seldepth": res.seldepth,
             "tt_hits": res.tt_hits,
             "tt_exact_hits": res.tt_exact_hits,
             "tt_lower_hits": res.tt_lower_hits,
@@ -177,6 +178,7 @@ def create_app() -> FastAPI:
             "tt_size": res.tt_size,
             "depth": res.depth,
             "time_ms": res.time_ms,
+            "hashfull": res.hashfull,
         }
 
     @app.post("/api/perft")
