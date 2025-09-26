@@ -6,6 +6,7 @@ An API-first chess engine focused on clean separation between the core engine, s
 - [Overview](#overview)
 - [Current Roadmap](#current-roadmap)
 - [Quick Start](#quick-start)
+- [UCI Input Guide](#uci-input-guide)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
 - [Documentation](#documentation)
@@ -48,6 +49,77 @@ Planning takes place through the staged plans in `docs/plans/`. Start with the m
    make lint
    make format
    ```
+
+## UCI Input Guide
+
+The engine speaks the [Universal Chess Interface (UCI)](https://en.wikipedia.org/wiki/Universal_Chess_Interface) protocol, which
+lets you drive it from any UCI-compatible GUI or from the command line. The snippets below demonstrate a simple, manual
+interaction using `python -m chess_engine.cli.uci` (replace this command with the appropriate entry point for your build).
+
+### 1. Start the Engine
+
+```bash
+python -m chess_engine.cli.uci
+```
+
+When the engine is ready it prints `uciok`, indicating that it understands the protocol.
+
+### 2. Configure Options (Optional)
+
+Use `setoption` commands to configure the engine. For example, to limit the search depth to 10 plies:
+
+```
+setoption name Depth value 10
+```
+
+Available option names depend on the current build; the engine will list them in response to the `uci` command.
+
+### 3. Initialize a New Game
+
+Before starting play, reset the internal state:
+
+```
+ucinewgame
+isready
+```
+
+Wait for the engine to reply `readyok` before sending moves or search commands.
+
+### 4. Provide the Position
+
+Load a starting position using `position`. You can begin from the standard initial layout or a specific FEN string.
+
+```
+position startpos moves e2e4 e7e5 g1f3
+```
+
+The example above plays 1.e4 e5 2.Nf3, setting the engine to move on behalf of Black. Replace `startpos` with
+`fen <FEN_STRING>` to continue from an arbitrary board state.
+
+### 5. Ask the Engine to Search
+
+The `go` command starts the search. Common parameters are `movetime` (milliseconds to think) and `depth` (maximum search depth).
+
+```
+go movetime 2000
+```
+
+The engine will analyze the position and eventually emit a `bestmove`, e.g. `bestmove b8c6`.
+
+### 6. Iterate
+
+After each `bestmove`, apply it to your GUI or continue the command-line session by appending it to the next `position ... moves`
+sequence. Repeat the `go` command as needed.
+
+### 7. Exit Cleanly
+
+Send `quit` to terminate the session:
+
+```
+quit
+```
+
+This ensures the process shuts down gracefully.
 
 ## Project Structure
 The repository layout follows the guidelines in `AGENTS.md`:
