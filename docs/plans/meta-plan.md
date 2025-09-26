@@ -6,14 +6,14 @@
 - Keep engine core pure/deterministic; isolate I/O in protocol layers.
 
 ## Phases (7 Core + 1 Optional)
-1. API Contract & Repo Scaffolding
-2. Board Representation & FEN I/O
-3. Move Generation & Legality (+ Perft)
-4. Evaluation & Minimal Search
-5. HTTP API & Game Session Management
-6. Tooling, Tests & CI
-7. Performance & Search Features
-8. (Optional) UCI Protocol & CLI
+1. API Contract & Repo Scaffolding – ✅ Completed (repo layout, OpenAPI draft, Make targets).
+2. Board Representation & FEN I/O – ✅ Completed (bitboards, Zobrist, FEN parser/serializer).
+3. Move Generation & Legality (+ Perft) – ✅ Completed (legal generator, perft parity harness).
+4. Evaluation & Minimal Search – ✅ Completed (material + PSQT eval, alpha-beta + quiescence).
+5. HTTP API & Game Session Management – ✅ Completed (FastAPI app, session store, endpoints).
+6. Tooling, Tests & CI – ⚠️ Partially complete (Make, pytest, lint, CI live; coverage/bench TBD).
+7. Performance & Search Features – ⚙️ In progress (TT, ordering, aspiration done; metrics pending).
+8. (Optional) UCI Protocol & CLI – ⏳ Not started beyond scaffolding.
 
 ## Stage Gates
 - Gate A (after Plan 3): Perft parity on suites (depth ≥ 5). No search work proceeds until move generator is correct.
@@ -55,5 +55,7 @@
 - Cancellation semantics: define cooperative cancellation points (node loop, quiescence entry) and ensure `stop` results in a best-known move and stats.
 - Concurrency: serialize session-bound searches; document behavior when concurrent HTTP and UCI commands target the same game/session.
 
-## Next Step
-- Execute Plan 1 to lock API schemas and scaffold the repository layout.
+## Current Focus
+- Finalize Plan 6 by codifying coverage thresholds and checking in benchmark artifacts.
+- Complete Plan 7 metrics/benchmarking and document observed gains over the minimal search.
+- Plan 8 remains optional; revisit once HTTP surface stabilizes and performance goals are met.

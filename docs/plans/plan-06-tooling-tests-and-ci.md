@@ -29,3 +29,21 @@ Establish robust developer tooling, tests, and CI to maintain quality.
 
 ## Risks/Notes
 - Keep tests deterministic and time-bounded; avoid flaky timeouts.
+
+## Status
+- ✅ Make targets for build/test/lint/format committed and used by CI.
+- ✅ Ruff + Black configured; pytest harness runs engine, protocol, and search suites within CI.
+- ✅ GitHub Actions workflow (`ci.yml`) runs lint + tests on Python 3.10/3.11 matrix.
+- 🚧 Coverage thresholds not yet enforced; coverage reporting and per-module targets remain open.
+- 🚧 Benchmark protocol and baseline artifact still need to be formalized and checked in.
+
+## Next Actions
+- Introduce coverage tooling (`pytest --cov` or `coverage.py`) and enforce thresholds per plan
+  (100% for FEN/move gen, ≥80% elsewhere).
+- Land benchmark script/results (e.g., tactical suite nodes/s) under `assets/benchmarks/` and wire
+  into documentation for Plan 7 comparisons.
+- Evaluate type-checking needs (`pyright`/`mypy`) and document decision.
+
+## Changelog
+- 2025-09-26: Recorded existing tooling/CI state and called out outstanding coverage + benchmark
+  deliverables.
