@@ -40,7 +40,8 @@ class SearchResult:
 class SearchService:
     """Minimal search service interface.
 
-    This stub will be implemented after legal move generation (Plan 4).
+    Notes:
+        This stub will be implemented after legal move generation (Plan 4).
     """
 
     def search(
@@ -72,6 +73,32 @@ class SearchService:
             ]
         ] = None,
     ) -> SearchResult:
+        """Search a game to the requested depth using negamax alpha-beta.
+
+        Args:
+            game (Game): Game instance whose position is searched.
+            depth (int): Maximum search depth in plies.
+            movetime_ms (Optional[int]): Hard time limit for the search in
+                milliseconds. ``None`` disables the limit.
+            tt_max_entries (Optional[int]): Optional cap on transposition table
+                entries to retain.
+            enable_pvs (bool): Whether to use principal variation search.
+            enable_nmp (bool): Whether to allow null-move pruning.
+            enable_lmr (bool): Whether to apply late-move reductions.
+            enable_futility (bool): Whether to enable futility pruning.
+            on_iter (Optional[Callable[..., None]]): Callback invoked after each
+                completed iteration with search statistics.
+
+        Returns:
+            SearchResult: Aggregated search statistics and the selected move.
+
+        Notes:
+            The implementation performs iterative deepening with aspiration
+            windows, quiescence search, a transposition table, killer/history
+            heuristics, and common pruning toggles. Time control is enforced via
+            ``movetime_ms`` and ``on_iter`` receives per-iteration data when
+            provided.
+        """
         # Deterministic negamax alpha-beta with quiescence, simple material evaluation,
         # and a transposition table. Includes terminal scoring (mate/stalemate/draw).
         board = game.board
