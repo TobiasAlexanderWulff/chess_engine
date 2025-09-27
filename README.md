@@ -6,6 +6,7 @@ An API-first chess engine focused on clean separation between the core engine, s
 - [Overview](#overview)
 - [Current Roadmap](#current-roadmap)
 - [Quick Start](#quick-start)
+- [HTTP API Reference](#http-api-reference)
 - [UCI Input Guide](#uci-input-guide)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
@@ -49,6 +50,33 @@ Planning takes place through the staged plans in `docs/plans/`. Start with the m
    make lint
    make format
    ```
+
+## HTTP API Reference
+
+The engine ships with a RESTful HTTP interface, exposing endpoints for creating and
+driving game sessions, launching searches, and running perft calculations. Unless
+stated otherwise, responses are JSON and error conditions return `400 Bad Request`
+with a descriptive `detail` message.
+
+| Method | Path | Description | Request Body | Success Response |
+|--------|------|-------------|--------------|------------------|
+| GET | `/healthz` | Liveness probe confirming the service is reachable. | _None_ | `{ "status": "ok" }` |
+| POST | `/api/games` | Creates a new in-memory game session and returns its identifier. | _None_ | `{ "game_id": str, "fen": str }` |
+| GET | `/api/games/{game_id}/state` | Fetches the current game state, including legal moves and history. | _None_ | `GameState` payload with FEN, legal moves, and status flags. |
+| POST | `/api/games/{game_id}/position` | Replaces the game state with a provided FEN position. | `{ "fen": str }` | Updated `GameState`. |
+| POST | `/api/games/{game_id}/move` | Applies a UCI move string to the game. | `{ "move": str }` | Updated `GameState`. |
+| POST | `/api/games/{game_id}/undo` | Reverts the most recent move in the session. | _None_ | Updated `GameState`. |
+| POST | `/api/games/{game_id}/search` | Runs a search from the current position. | `{ "depth"?: int, "movetime_ms"?: int, "tt_max_entries"?: int }` | Search statistics, principal variation, and best move. |
+| POST | `/api/perft` | Executes a perft calculation for the supplied FEN at a depth. | `{ "fen": str, "depth"?: int }` | `{ "nodes": int }` |
+
+`GameState` responses contain:
+
+- `game_id`: Session identifier.
+- `fen`: Current board position in FEN notation.
+- `legal_moves`: List of legal moves as UCI strings.
+- `in_check`, `checkmate`, `stalemate`, `draw`: Status flags for the side to move.
+- `last_move`: The most recent move in UCI format, if any.
+- `move_history`: Chronological list of moves applied to the game.
 
 ## UCI Input Guide
 
