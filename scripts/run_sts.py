@@ -4,7 +4,6 @@ import csv
 import os
 import re
 import shlex
-import signal
 import subprocess
 import sys
 import time
@@ -13,8 +12,11 @@ from typing import Dict, List, Optional, Tuple
 
 try:
     import chess
-except ImportError as e:
-    print("Missing dependency: python-chess. Please install it (e.g., pip install python-chess)", file=sys.stderr)
+except ImportError:
+    print(
+        "Missing dependency: python-chess. Please install it (e.g., pip install python-chess)",
+        file=sys.stderr,
+    )
     raise
 
 
@@ -62,7 +64,6 @@ def parse_epd_line(line: str, line_no: int) -> Optional[EPDRecord]:
     meta: Dict[str, str] = {}
 
     # Parse EPD ops: key value; key value; ... values may be quoted
-    i = 0
     tokens = shlex.split(ops_str, posix=True)
     # Reconstruct into key/value pairs terminated by ';'
     k = None
@@ -131,19 +132,26 @@ class UCIEngine:
         self.path = path
         self.proc: Optional[subprocess.Popen] = None
 
-    def start(self, threads: Optional[int] = None, hash_mb: Optional[int] = None, timeout: float = 5.0):
+    def start(
+        self, threads: Optional[int] = None, hash_mb: Optional[int] = None, timeout: float = 5.0
+    ):
         self.proc = subprocess.Popen(
-            [self.path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
+            [self.path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
         )
         self.send("uci")
-        if not self._read_until(lambda l: l.strip() == "uciok", timeout):
+        if not self._read_until(lambda line: line.strip() == "uciok", timeout):
             raise RuntimeError("Engine did not respond to 'uci'")
         if threads is not None:
             self.set_option("Threads", str(threads))
         if hash_mb is not None:
             self.set_option("Hash", str(hash_mb))
         self.send("isready")
-        if not self._read_until(lambda l: l.strip() == "readyok", timeout):
+        if not self._read_until(lambda line: line.strip() == "readyok", timeout):
             raise RuntimeError("Engine not ready after options")
 
     def send(self, cmd: str):
@@ -166,13 +174,19 @@ class UCIEngine:
                 return True
         return False
 
-    def go(self, fen: str, movetime_ms: Optional[int] = None, depth: Optional[int] = None, nodes: Optional[int] = None,
-           timeout_factor: float = 2.5) -> Tuple[Optional[str], Dict[str, str]]:
+    def go(
+        self,
+        fen: str,
+        movetime_ms: Optional[int] = None,
+        depth: Optional[int] = None,
+        nodes: Optional[int] = None,
+        timeout_factor: float = 2.5,
+    ) -> Tuple[Optional[str], Dict[str, str]]:
         assert self.proc and self.proc.stdout
         self.send("ucinewgame")
         self.send(f"position fen {fen}")
         self.send("isready")
-        if not self._read_until(lambda l: l.strip() == "readyok", timeout=5.0):
+        if not self._read_until(lambda line: line.strip() == "readyok", timeout=5.0):
             raise RuntimeError("Engine not ready for position")
 
         if depth is not None:
@@ -212,7 +226,9 @@ class UCIEngine:
                 pass
 
 
-def compare_moves(engine_move: Optional[str], solutions_uci: List[str], strict: bool = False) -> bool:
+def compare_moves(
+    engine_move: Optional[str], solutions_uci: List[str], strict: bool = False
+) -> bool:
     if engine_move is None:
         return False
     if strict:
@@ -220,9 +236,18 @@ def compare_moves(engine_move: Optional[str], solutions_uci: List[str], strict: 
     return engine_move.lower().strip() in {s.lower().strip() for s in solutions_uci}
 
 
-def run_suite(records: List[EPDRecord], engine_path: str, movetime: int, depth: Optional[int], nodes: Optional[int],
-              threads: Optional[int], hash_mb: Optional[int], limit: Optional[int], strict: bool,
-              csv_path: Optional[str]) -> int:
+def run_suite(
+    records: List[EPDRecord],
+    engine_path: str,
+    movetime: int,
+    depth: Optional[int],
+    nodes: Optional[int],
+    threads: Optional[int],
+    hash_mb: Optional[int],
+    limit: Optional[int],
+    strict: bool,
+    csv_path: Optional[str],
+) -> int:
     engine = UCIEngine(engine_path)
     engine.start(threads=threads, hash_mb=hash_mb)
 
@@ -232,7 +257,9 @@ def run_suite(records: List[EPDRecord], engine_path: str, movetime: int, depth: 
 
     csv_file = open(csv_path, "w", newline="", encoding="utf-8") if csv_path else sys.stdout
     writer = csv.writer(csv_file)
-    writer.writerow(["id", "line_no", "correct", "engine_move", "solutions", "fen", "time_ms", "depth", "nodes"])
+    writer.writerow(
+        ["id", "line_no", "correct", "engine_move", "solutions", "fen", "time_ms", "depth", "nodes"]
+    )
 
     try:
         for rec in records:
@@ -248,21 +275,25 @@ def run_suite(records: List[EPDRecord], engine_path: str, movetime: int, depth: 
             bestmove, _meta = engine.go(rec.fen, movetime_ms=movetime, depth=depth, nodes=nodes)
             elapsed_ms = int((time.time() - start) * 1000)
 
-            is_correct = compare_moves(bestmove, solutions_uci, strict=strict) if solutions_uci else False
+            is_correct = (
+                compare_moves(bestmove, solutions_uci, strict=strict) if solutions_uci else False
+            )
             if is_correct:
                 correct += 1
 
-            writer.writerow([
-                rec.meta.get("id", ""),
-                rec.line_no,
-                1 if is_correct else 0,
-                bestmove or "",
-                " ".join(solutions_uci),
-                rec.fen,
-                elapsed_ms,
-                depth or "",
-                nodes or "",
-            ])
+            writer.writerow(
+                [
+                    rec.meta.get("id", ""),
+                    rec.line_no,
+                    1 if is_correct else 0,
+                    bestmove or "",
+                    " ".join(solutions_uci),
+                    rec.fen,
+                    elapsed_ms,
+                    depth or "",
+                    nodes or "",
+                ]
+            )
     finally:
         if csv_file is not sys.stdout:
             csv_file.close()
@@ -281,14 +312,30 @@ def main():
     ap = argparse.ArgumentParser(description="Run Strategic Test Suite (STS) against a UCI engine")
     ap.add_argument("--engine", required=True, help="Path to UCI engine executable")
     ap.add_argument("--epd", required=True, help="Path to STS EPD file")
-    ap.add_argument("--movetime", type=int, default=2000, help="Movetime per position in ms (default: 2000)")
-    ap.add_argument("--depth", type=int, default=None, help="Depth limit (mutually exclusive with movetime/nodes)")
-    ap.add_argument("--nodes", type=int, default=None, help="Node limit (mutually exclusive with movetime/depth)")
+    ap.add_argument(
+        "--movetime", type=int, default=2000, help="Movetime per position in ms (default: 2000)"
+    )
+    ap.add_argument(
+        "--depth",
+        type=int,
+        default=None,
+        help="Depth limit (mutually exclusive with movetime/nodes)",
+    )
+    ap.add_argument(
+        "--nodes",
+        type=int,
+        default=None,
+        help="Node limit (mutually exclusive with movetime/depth)",
+    )
     ap.add_argument("--threads", type=int, default=None, help="Set UCI Threads option if supported")
-    ap.add_argument("--hash", dest="hash_mb", type=int, default=None, help="Set UCI Hash size (MB) if supported")
+    ap.add_argument(
+        "--hash", dest="hash_mb", type=int, default=None, help="Set UCI Hash size (MB) if supported"
+    )
     ap.add_argument("--limit", type=int, default=None, help="Limit number of positions")
     ap.add_argument("--strict", action="store_true", help="Strict match (exact UCI string)")
-    ap.add_argument("--report", dest="csv_path", default=None, help="Path to CSV report (default: stdout)")
+    ap.add_argument(
+        "--report", dest="csv_path", default=None, help="Path to CSV report (default: stdout)"
+    )
 
     args = ap.parse_args()
 
@@ -325,4 +372,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
