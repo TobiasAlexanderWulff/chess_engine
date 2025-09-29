@@ -7,10 +7,10 @@ PROJECT_VERSION := $(shell grep -E '^version *= *"' pyproject.toml | head -n1 | 
 
 # Bench configuration (override via environment/CLI)
 BENCH_POSITIONS ?= assets/benchmarks/positions.json
-BENCH_MOVETIME_MS ?=
+BENCH_MOVETIME_MS ?= 2000
 BENCH_DEPTH ?=
 BENCH_HASH_MB ?= 16
-BENCH_ITERATIONS ?= 1
+BENCH_ITERATIONS ?= 3
 BENCH_OUT ?= assets/benchmarks/baseline-$(PROJECT_VERSION).json
 BENCH_PRETTY ?= 1
 BENCH_PROGRESS ?= 1

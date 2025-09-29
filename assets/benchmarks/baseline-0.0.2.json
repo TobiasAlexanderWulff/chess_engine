@@ -1,19 +1,19 @@
 {
   "meta": {
-    "timestamp": "2025-09-29T12:22:02Z",
+    "timestamp": "2025-09-29T12:31:42Z",
     "python": "3.11.9",
     "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
     "git": {
-      "commit": "fcb763ee3d840ca40d8f05ac33c7b7c387bb43bd",
-      "describe": "fcb763e-dirty"
+      "commit": "6c7b117c0f260dab14280cde15777ee7f48af10d",
+      "describe": "6c7b117"
     },
     "engine": {
       "version": "0.0.1"
     },
     "config": {
       "positions_file": "assets/benchmarks/positions.json",
-      "iterations": 1,
-      "global_movetime_ms": 1000,
+      "iterations": 3,
+      "global_movetime_ms": 2000,
       "global_depth": null,
       "hash_mb": 16,
       "tt_max_entries": 262144
@@ -33,10 +33,10 @@
       "pv": [
         "b1c3"
       ],
-      "time_ms": 5,
+      "time_ms": 6,
       "nodes": 49,
       "qnodes": 24,
-      "nps": 9800,
+      "nps": 8166,
       "seldepth": 1,
       "tt_hits": 0,
       "tt_probes": 1,
@@ -50,7 +50,7 @@
       "iters": [
         {
           "depth": 1,
-          "time_ms": 5,
+          "time_ms": 6,
           "nodes": 49,
           "qnodes": 24,
           "fail_high": 0,
@@ -253,9 +253,9 @@
   ],
   "summary": {
     "positions": 6,
-    "total_time_ms": 47,
+    "total_time_ms": 141,
     "total_nodes": 216,
     "total_qnodes": 142,
-    "overall_nps": 4595
+    "overall_nps": 1531
   }
 }
