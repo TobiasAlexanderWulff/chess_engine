@@ -8,7 +8,7 @@ from src.engine.game import Game
 from src.engine.move import Move
 from src.eval import evaluate
 from src.engine.board import WP, WN, WB, WR, WQ, WK, BP, BN, BB, BR, BQ, BK
-from src.engine.zobrist import compute_hash_from_scratch
+from src.engine.zobrist import ZOBRIST
 
 
 @dataclass
@@ -469,10 +469,14 @@ class SearchService:
                     prev_stm = board.side_to_move
                     prev_ep = board.ep_square
                     prev_hash = board.zobrist_hash
-                    # Make null move: swap side, clear ep square, recompute hash
+                    # Make null move: swap side, clear ep square, and update hash incrementally
+                    # Toggle side-to-move and remove any EP file contribution.
+                    h = board.zobrist_hash ^ ZOBRIST.side_to_move
+                    if board.ep_square is not None:
+                        h ^= ZOBRIST.ep_file[board.ep_square % 8]
                     board.side_to_move = "b" if board.side_to_move == "w" else "w"
                     board.ep_square = None
-                    board.zobrist_hash = compute_hash_from_scratch(board)
+                    board.zobrist_hash = h
 
                     R = 2
                     null_score, _ = negamax(d - 1 - R, -beta, -beta + 1, ply + 1)
