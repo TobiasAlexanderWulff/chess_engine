@@ -85,6 +85,34 @@ with a descriptive `detail` message.
   - `gen_time_main_ms`: time spent generating legal moves at main (non-quiescence) nodes (accumulated milliseconds).
   - `gen_time_q_ms`: time spent generating captures/evasions inside quiescence (accumulated milliseconds).
 
+Example:
+```bash
+# Create a game
+curl -s -X POST http://localhost:8000/api/games | jq
+
+# Response
+# { "game_id": "abc123", "fen": "rnbqkbnr/..." }
+
+# Run a profiled search (2s movetime)
+curl -s -X POST "http://localhost:8000/api/games/abc123/search" \
+  -H "Content-Type: application/json" \
+  -d '{"movetime_ms":2000, "enable_profiling": true}' | jq
+
+# Response (abridged)
+# {
+#   "best_move": "e2e4",
+#   "score": { "cp": 34 },
+#   "pv": ["e2e4", "e7e5", "g1f3"],
+#   "nodes": 123456,
+#   "qnodes": 45678,
+#   "depth": 8,
+#   "time_ms": 1999,
+#   "gen_time_main_ms": 120,
+#   "gen_time_q_ms": 85,
+#   ...
+# }
+```
+
 ## UCI Input Guide
 
 The engine speaks the [Universal Chess Interface (UCI)](https://en.wikipedia.org/wiki/Universal_Chess_Interface) protocol, which
