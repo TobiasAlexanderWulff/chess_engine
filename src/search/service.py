@@ -35,8 +35,14 @@ class SearchResult:
     time_ms: int
     seldepth: int
     hashfull: int
+    gen_time_main_us: int
+    gen_time_q_us: int
     gen_time_main_ms: int
     gen_time_q_ms: int
+    q_cap_candidates: int
+    q_king_cap_candidates: int
+    q_king_cap_see_pruned: int
+    q_evasions_generated: int
 
 
 class SearchService:
@@ -107,8 +113,12 @@ class SearchService:
         board = game.board
         nodes = 0
         qnodes = 0
-        gen_time_main_ms = 0
-        gen_time_q_ms = 0
+        gen_time_main_ns = 0
+        gen_time_q_ns = 0
+        q_cap_candidates = 0
+        q_king_cap_candidates = 0
+        q_king_cap_see_pruned = 0
+        q_evasions_generated = 0
         # Repetition tracking: seed counts from the game so threefold inside search is detected
         rep_counts: Dict[int, int] = dict(getattr(game, "repetition", {}))
         tt_probes = 0
@@ -435,10 +445,10 @@ class SearchService:
 
             # No legal moves: mate or stalemate
             if enable_profiling:
-                nonlocal gen_time_main_ms
-                t0_gen = time.perf_counter()
+                nonlocal gen_time_main_ns
+                t0_gen = time.perf_counter_ns()
                 legal_precheck = board.generate_legal_moves()
-                gen_time_main_ms += int((time.perf_counter() - t0_gen) * 1000)
+                gen_time_main_ns += int(time.perf_counter_ns() - t0_gen)
             else:
                 legal_precheck = board.generate_legal_moves()
             if not legal_precheck:
@@ -693,7 +703,8 @@ class SearchService:
             return best_score, best_line
 
         def qsearch(alpha: int, beta: int, ply: int) -> Tuple[int, List[Move]]:
-            nonlocal nodes, qnodes, seldepth_iter, seldepth_global, gen_time_q_ms
+            nonlocal nodes, qnodes, seldepth_iter, seldepth_global, gen_time_q_ns
+            nonlocal q_cap_candidates, q_king_cap_candidates, q_king_cap_see_pruned, q_evasions_generated
             if ply > seldepth_iter:
                 seldepth_iter = ply
             if ply > seldepth_global:
@@ -715,11 +726,12 @@ class SearchService:
             # Immediate terminal states (no legal moves)
             if in_check_now:
                 if enable_profiling:
-                    t0_q = time.perf_counter()
+                    t0_q = time.perf_counter_ns()
                     evasions = board.generate_evasions_fast()
-                    gen_time_q_ms += int((time.perf_counter() - t0_q) * 1000)
+                    gen_time_q_ns += int(time.perf_counter_ns() - t0_q)
                 else:
                     evasions = board.generate_evasions_fast()
+                q_evasions_generated += len(evasions)
                 if not evasions:
                     return -MATE_SCORE + ply, []
             else:
@@ -734,16 +746,17 @@ class SearchService:
             # Candidate moves: evasions when in check; otherwise capture-only
             moves_q: List[Move]
             if in_check_now:
-                moves_q = board.generate_evasions()
+                moves_q = board.generate_evasions_fast()
             else:
                 if enable_profiling:
-                    t0_q2 = time.perf_counter()
+                    t0_q2 = time.perf_counter_ns()
                     moves_q = board.generate_captures()
-                    gen_time_q_ms += int((time.perf_counter() - t0_q2) * 1000)
+                    gen_time_q_ns += int(time.perf_counter_ns() - t0_q2)
                 else:
                     moves_q = board.generate_captures()
                 if not moves_q:
                     return alpha, []
+                q_cap_candidates += len(moves_q)
 
             # Use simple MVV-LVA ordering for captures
             piece_vals = [100, 320, 330, 500, 900, 20000] * 2
@@ -777,6 +790,15 @@ class SearchService:
                 a = piece_vals[att] if att is not None else 0
                 return v * 10 - a
 
+            # Count king capture candidates (attacker is king)
+            if not in_check_now:
+                kc = 0
+                for mv in moves_q:
+                    att = attacker_piece_index(mv)
+                    if att in (WK, BK):
+                        kc += 1
+                q_king_cap_candidates += kc
+
             moves_q.sort(key=cap_score, reverse=True)
 
             best_line: List[Move] = []
@@ -784,9 +806,9 @@ class SearchService:
                 # Small SEE gate: skip obviously losing king captures when not in check
                 if not in_check_now:
                     att = attacker_piece_index(m)
-                    if att is not None and (att == WK or att == BK):
-                        if see(m) < 0:
-                            continue
+                    if att in (WK, BK) and see(m) < 0:
+                        q_king_cap_see_pruned += 1
+                        continue
                 board.make_move(m)
                 # repetition accounting
                 child_hash = board.zobrist_hash
@@ -992,6 +1014,12 @@ class SearchService:
                 if (tt_max_entries is not None and tt_max_entries > 0)
                 else 0
             ),
-            gen_time_main_ms=gen_time_main_ms,
-            gen_time_q_ms=gen_time_q_ms,
+            gen_time_main_us=int(gen_time_main_ns // 1000),
+            gen_time_q_us=int(gen_time_q_ns // 1000),
+            gen_time_main_ms=int(gen_time_main_ns // 1_000_000),
+            gen_time_q_ms=int(gen_time_q_ns // 1_000_000),
+            q_cap_candidates=q_cap_candidates,
+            q_king_cap_candidates=q_king_cap_candidates,
+            q_king_cap_see_pruned=q_king_cap_see_pruned,
+            q_evasions_generated=q_evasions_generated,
         )

@@ -181,8 +181,14 @@ def create_app() -> FastAPI:
             "depth": res.depth,
             "time_ms": res.time_ms,
             "hashfull": res.hashfull,
+            "gen_time_main_us": res.gen_time_main_us,
+            "gen_time_q_us": res.gen_time_q_us,
             "gen_time_main_ms": res.gen_time_main_ms,
             "gen_time_q_ms": res.gen_time_q_ms,
+            "q_cap_candidates": res.q_cap_candidates,
+            "q_king_cap_candidates": res.q_king_cap_candidates,
+            "q_king_cap_see_pruned": res.q_king_cap_see_pruned,
+            "q_evasions_generated": res.q_evasions_generated,
         }
 
     @app.post("/api/perft")
