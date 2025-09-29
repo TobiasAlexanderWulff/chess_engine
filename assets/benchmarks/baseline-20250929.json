@@ -1,0 +1,261 @@
+{
+  "meta": {
+    "timestamp": "2025-09-29T11:59:51Z",
+    "python": "3.11.9",
+    "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "git": {
+      "commit": "a0bb99d10a54fba65c098b266eebecdf62f73ce1",
+      "describe": "a0bb99d-dirty"
+    },
+    "engine": {
+      "version": "0.0.1"
+    },
+    "config": {
+      "positions_file": "assets/benchmarks/positions.json",
+      "iterations": 1,
+      "global_movetime_ms": null,
+      "global_depth": null,
+      "hash_mb": 16,
+      "tt_max_entries": 262144
+    }
+  },
+  "results": [
+    {
+      "id": "startpos",
+      "name": "Start Position",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "movetime_ms": 500,
+      "depth": 1,
+      "best_move": "b1c3",
+      "score": {
+        "cp": 58
+      },
+      "pv": [
+        "b1c3"
+      ],
+      "time_ms": 5,
+      "nodes": 49,
+      "qnodes": 24,
+      "nps": 9800,
+      "seldepth": 1,
+      "tt_hits": 0,
+      "tt_probes": 1,
+      "tt_stores": 1,
+      "tt_replacements": 0,
+      "tt_size": 1,
+      "hashfull": 0,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 5,
+          "nodes": 49,
+          "qnodes": 24,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "open_midgame",
+      "name": "Open Middlegame",
+      "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq - 4 5",
+      "movetime_ms": 500,
+      "depth": 1,
+      "best_move": "d2d3",
+      "score": {
+        "cp": 67
+      },
+      "pv": [
+        "d2d3"
+      ],
+      "time_ms": 26,
+      "nodes": 121,
+      "qnodes": 87,
+      "nps": 4653,
+      "seldepth": 8,
+      "tt_hits": 0,
+      "tt_probes": 1,
+      "tt_stores": 1,
+      "tt_replacements": 0,
+      "tt_size": 1,
+      "hashfull": 0,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 26,
+          "nodes": 121,
+          "qnodes": 87,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "closed_midgame",
+      "name": "Closed Middlegame",
+      "fen": "rnbq1rk1/ppp2ppp/3b1n2/3pp3/3P4/2P1PN2/PP3PPP/RNBQKB1R w KQ - 0 6",
+      "movetime_ms": 500,
+      "depth": 1,
+      "best_move": "f3e5",
+      "score": {
+        "cp": 56
+      },
+      "pv": [
+        "f3e5"
+      ],
+      "time_ms": 3,
+      "nodes": 13,
+      "qnodes": 9,
+      "nps": 4333,
+      "seldepth": 3,
+      "tt_hits": 0,
+      "tt_probes": 1,
+      "tt_stores": 1,
+      "tt_replacements": 0,
+      "tt_size": 1,
+      "hashfull": 0,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 3,
+          "nodes": 13,
+          "qnodes": 9,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "tactics_knights",
+      "name": "Tactical Knights",
+      "fen": "r2q1rk1/pp2bppp/2n2n2/2bp4/3P4/2N1PN2/PPQ1BPPP/R1B2RK1 w - - 4 10",
+      "movetime_ms": 500,
+      "depth": 1,
+      "best_move": "d4c5",
+      "score": {
+        "cp": 315
+      },
+      "pv": [
+        "d4c5",
+        "e7c5"
+      ],
+      "time_ms": 6,
+      "nodes": 21,
+      "qnodes": 19,
+      "nps": 3500,
+      "seldepth": 9,
+      "tt_hits": 0,
+      "tt_probes": 1,
+      "tt_stores": 1,
+      "tt_replacements": 0,
+      "tt_size": 1,
+      "hashfull": 0,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 5,
+          "nodes": 21,
+          "qnodes": 19,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "endgame_kq_kr",
+      "name": "Endgame KQ vs KR",
+      "fen": "8/8/8/8/8/8/5k2/6KQ w - - 0 1",
+      "movetime_ms": 500,
+      "depth": 1,
+      "best_move": "g1h2",
+      "score": {
+        "cp": 868
+      },
+      "pv": [
+        "g1h2",
+        "f2e3"
+      ],
+      "time_ms": 1,
+      "nodes": 10,
+      "qnodes": 3,
+      "nps": 10000,
+      "seldepth": 2,
+      "tt_hits": 1,
+      "tt_probes": 3,
+      "tt_stores": 2,
+      "tt_replacements": 0,
+      "tt_size": 2,
+      "hashfull": 0,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 1,
+          "nodes": 10,
+          "qnodes": 3,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "endgame_kpp_k",
+      "name": "Endgame KPP vs K",
+      "fen": "8/8/8/8/8/5P2/4P1k1/6K1 w - - 0 1",
+      "movetime_ms": 500,
+      "depth": 1,
+      "best_move": "g1g2",
+      "score": {
+        "cp": 0
+      },
+      "pv": [
+        "g1g2"
+      ],
+      "time_ms": 0,
+      "nodes": 2,
+      "qnodes": 0,
+      "nps": 0,
+      "seldepth": 1,
+      "tt_hits": 0,
+      "tt_probes": 1,
+      "tt_stores": 1,
+      "tt_replacements": 0,
+      "tt_size": 1,
+      "hashfull": 0,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "positions": 6,
+    "total_time_ms": 46,
+    "total_nodes": 216,
+    "total_qnodes": 142,
+    "overall_nps": 4695
+  }
+}

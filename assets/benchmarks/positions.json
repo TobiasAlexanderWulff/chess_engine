@@ -1,0 +1,43 @@
+{
+  "suite": "default",
+  "description": "Mixed positions for baseline engine benchmarks (start, middlegame, endgames).",
+  "positions": [
+    {
+      "id": "startpos",
+      "name": "Start Position",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "open_midgame",
+      "name": "Open Middlegame",
+      "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq - 4 5",
+      "movetime_ms": 500
+    },
+    {
+      "id": "closed_midgame",
+      "name": "Closed Middlegame",
+      "fen": "rnbq1rk1/ppp2ppp/3b1n2/3pp3/3P4/2P1PN2/PP3PPP/RNBQKB1R w KQ - 0 6",
+      "movetime_ms": 500
+    },
+    {
+      "id": "tactics_knights",
+      "name": "Tactical Knights",
+      "fen": "r2q1rk1/pp2bppp/2n2n2/2bp4/3P4/2N1PN2/PPQ1BPPP/R1B2RK1 w - - 4 10",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kq_kr",
+      "name": "Endgame KQ vs KR",
+      "fen": "8/8/8/8/8/8/5k2/6KQ w - - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kpp_k",
+      "name": "Endgame KPP vs K",
+      "fen": "8/8/8/8/8/5P2/4P1k1/6K1 w - - 0 1",
+      "movetime_ms": 500
+    }
+  ]
+}
+
