@@ -53,6 +53,9 @@ Increase playing strength and performance with classic engine features.
 - Evaluate remaining enhancements (e.g., late-move reductions tuning, singular extensions) and
   decide on scope.
 
+- Implement capture-only quiescence (generate_captures / generate_evasions) next, then re-benchmark
+  and document observed deltas.
+
 ## Benchmark Protocol
 Use the repo’s benchmark harness to produce reproducible metrics and detect regressions.
 
@@ -64,6 +67,32 @@ Use the repo’s benchmark harness to produce reproducible metrics and detect re
   time, TT hit rate, fail-high/low, re-searches) in this document.
 
 Versioning requirement: bump the project version in `pyproject.toml` after each patch/minor/major change so new benchmark baselines are created per version instead of overwriting prior results.
+
+## Benchmark Results (v0.0.2)
+
+Context: Applied null-move hashing optimization to toggle Zobrist side/EP bits instead of full
+recompute. Baselines generated with `make bench` and compared via `scripts/bench_diff.py`.
+
+- Artifacts: `assets/benchmarks/baseline-0.0.1.json`, `assets/benchmarks/baseline-0.0.2.json`.
+- Command: `python3 scripts/bench_diff.py --old assets/benchmarks/baseline-0.0.1.json --new assets/benchmarks/baseline-0.0.2.json`.
+
+Overall summary:
+- nodes: 216 → 216 (+0.0%)
+- time_ms: 41 → 42 (+2.4%)
+- nps: 5268 → 5142 (−2.4%)
+
+Per-position highlights:
+- tactics_knights: +20.0% nps (3500 → 4200), time 6 → 5 ms.
+- open_midgame: −7.1% nps (4653 → 4321), time 26 → 28 ms.
+- Others unchanged within measurement noise at very short budgets.
+
+Notes:
+- At small movetime/iteration counts, variance is expected. Re-run with larger budgets and
+  iterations for stable measurements (e.g., `make bench BENCH_MOVETIME_MS=2000 BENCH_ITERATIONS=3`).
+
+Next measurement step:
+- Implement capture-only qsearch (with `generate_captures()` and `generate_evasions()`), then
+  re-run the same suite and update this section with new deltas.
 
 ## Changelog
 - 2025-09-26: Updated scope to reflect shipped TT, ordering, aspiration, and telemetry; noted
