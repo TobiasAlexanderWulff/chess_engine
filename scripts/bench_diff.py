@@ -115,12 +115,8 @@ def main() -> None:
     print(
         f"nodes: {old_total_nodes} -> {new_total_nodes} ({pct(old_total_nodes, new_total_nodes)})"
     )
-    print(
-        f"time_ms: {old_total_time} -> {new_total_time} ({pct(old_total_time, new_total_time)})"
-    )
-    print(
-        f"nps: {old_overall_nps} -> {new_overall_nps} ({pct(old_overall_nps, new_overall_nps)})"
-    )
+    print(f"time_ms: {old_total_time} -> {new_total_time} ({pct(old_total_time, new_total_time)})")
+    print(f"nps: {old_overall_nps} -> {new_overall_nps} ({pct(old_overall_nps, new_overall_nps)})")
 
     # Print per-position table
     print("\n-- per-position --")

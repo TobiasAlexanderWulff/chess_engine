@@ -700,51 +700,29 @@ class SearchService:
             if rep_counts.get(board.zobrist_hash, 0) >= 3:
                 return 0, []
 
+            in_check_now = board.in_check()
             # Immediate terminal states (no legal moves)
-            legal = board.generate_legal_moves()
-            if not legal:
-                if board.in_check():
+            if in_check_now:
+                evasions = board.generate_evasions()
+                if not evasions:
                     return -MATE_SCORE + ply, []
-                return 0, []
-
-            # If not in check, we can consider stand-pat cutoff
-            if not board.in_check():
+            else:
+                # Not in check: consider stand-pat cutoff
                 if stand_pat >= beta:
                     return stand_pat, []
                 if stand_pat > alpha:
                     alpha = stand_pat
 
-            # Precompute opponent occupancy to filter captures
-            if board.side_to_move == "w":
-                occ_opp = (
-                    board.bb[6]
-                    | board.bb[7]
-                    | board.bb[8]
-                    | board.bb[9]
-                    | board.bb[10]
-                    | board.bb[11]
-                )
+            # Opponent occupancy not required here; kept implicit in victim detection
+
+            # Candidate moves: evasions when in check; otherwise capture-only
+            moves_q: List[Move]
+            if in_check_now:
+                moves_q = board.generate_evasions()
             else:
-                occ_opp = (
-                    board.bb[0]
-                    | board.bb[1]
-                    | board.bb[2]
-                    | board.bb[3]
-                    | board.bb[4]
-                    | board.bb[5]
-                )
-
-            # Filter to captures (and en passant)
-            captures: List[Move] = []
-            for m in legal:
-                is_capture = ((occ_opp >> m.to_sq) & 1) == 1 or (
-                    board.ep_square is not None and m.to_sq == board.ep_square
-                )
-                if is_capture or board.in_check():
-                    captures.append(m)
-
-            if not captures:
-                return alpha, []
+                moves_q = board.generate_captures()
+                if not moves_q:
+                    return alpha, []
 
             # Use simple MVV-LVA ordering for captures
             piece_vals = [100, 320, 330, 500, 900, 20000] * 2
@@ -778,10 +756,10 @@ class SearchService:
                 a = piece_vals[att] if att is not None else 0
                 return v * 10 - a
 
-            captures.sort(key=cap_score, reverse=True)
+            moves_q.sort(key=cap_score, reverse=True)
 
             best_line: List[Move] = []
-            for m in captures:
+            for m in moves_q:
                 board.make_move(m)
                 # repetition accounting
                 child_hash = board.zobrist_hash

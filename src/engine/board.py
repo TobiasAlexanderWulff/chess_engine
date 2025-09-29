@@ -1227,3 +1227,41 @@ class Board:
     def has_legal_moves(self) -> bool:
         """Return True if the side to move has at least one legal move."""
         return bool(self.generate_legal_moves())
+
+    # --- Specialized generators for search ---
+    def generate_captures(self) -> List[Move]:
+        """Return legal capture moves only (including en passant and promo-captures)."""
+        legal = self.generate_legal_moves()
+        if not legal:
+            return []
+
+        # Opponent occupancy for direct capture detection
+        if self.side_to_move == "w":
+            occ_opp = (
+                self.bb[BP] | self.bb[BN] | self.bb[BB] | self.bb[BR] | self.bb[BQ] | self.bb[BK]
+            )
+        else:
+            occ_opp = (
+                self.bb[WP] | self.bb[WN] | self.bb[WB] | self.bb[WR] | self.bb[WQ] | self.bb[WK]
+            )
+
+        captures: List[Move] = []
+        for m in legal:
+            is_ep = False
+            if self.ep_square is not None and m.to_sq == self.ep_square:
+                if self.side_to_move == "w" and ((m.to_sq - m.from_sq) in (7, 9)):
+                    # white pawn capturing en passant
+                    if (self.bb[WP] >> m.from_sq) & 1:
+                        is_ep = True
+                elif self.side_to_move == "b" and ((m.from_sq - m.to_sq) in (7, 9)):
+                    if (self.bb[BP] >> m.from_sq) & 1:
+                        is_ep = True
+            if ((occ_opp >> m.to_sq) & 1) or is_ep:
+                captures.append(m)
+        return captures
+
+    def generate_evasions(self) -> List[Move]:
+        """Return legal moves when in check (i.e., check evasions). Empty if not in check."""
+        if not self.in_check():
+            return []
+        return self.generate_legal_moves()
