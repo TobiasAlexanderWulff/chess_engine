@@ -781,6 +781,12 @@ class SearchService:
 
             best_line: List[Move] = []
             for m in moves_q:
+                # Small SEE gate: skip obviously losing king captures when not in check
+                if not in_check_now:
+                    att = attacker_piece_index(m)
+                    if att is not None and (att == WK or att == BK):
+                        if see(m) < 0:
+                            continue
                 board.make_move(m)
                 # repetition accounting
                 child_hash = board.zobrist_hash
