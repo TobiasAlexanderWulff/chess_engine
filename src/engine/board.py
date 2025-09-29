@@ -1537,6 +1537,75 @@ class Board:
                         if (occ_opp >> to_sq) & 1:
                             moves.append(Move(from_sq, to_sq))
 
+        # Pinned pre-filter to reduce legality checks
+        def _compute_pins() -> set[int]:
+            kbb_local = self.bb[WK] if self.side_to_move == "w" else self.bb[BK]
+            if kbb_local == 0:
+                return set()
+            ks_local = (kbb_local & -kbb_local).bit_length() - 1
+            own_occ_local = (
+                self.bb[WP] | self.bb[WN] | self.bb[WB] | self.bb[WR] | self.bb[WQ] | self.bb[WK]
+                if self.side_to_move == "w"
+                else self.bb[BP]
+                | self.bb[BN]
+                | self.bb[BB]
+                | self.bb[BR]
+                | self.bb[BQ]
+                | self.bb[BK]
+            )
+            opp_bish_local = self.bb[BB] if self.side_to_move == "w" else self.bb[WB]
+            opp_rook_local = self.bb[BR] if self.side_to_move == "w" else self.bb[WR]
+            opp_queen_local = self.bb[BQ] if self.side_to_move == "w" else self.bb[WQ]
+            pins: set[int] = set()
+
+            def scan(df: int, dr: int, diag: bool) -> None:
+                tf, tr = ks_local % 8, ks_local // 8
+                seen_own: int | None = None
+                while True:
+                    tf += df
+                    tr += dr
+                    if not (0 <= tf < 8 and 0 <= tr < 8):
+                        return
+                    sq = tr * 8 + tf
+                    if (occ_all >> sq) & 1:
+                        if seen_own is None and ((own_occ_local >> sq) & 1):
+                            seen_own = sq
+                            continue
+                        if seen_own is not None:
+                            if diag:
+                                if ((opp_bish_local | opp_queen_local) >> sq) & 1:
+                                    pins.add(seen_own)
+                            else:
+                                if ((opp_rook_local | opp_queen_local) >> sq) & 1:
+                                    pins.add(seen_own)
+                        return
+
+            for df, dr in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+                scan(df, dr, True)
+            for df, dr in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                scan(df, dr, False)
+            return pins
+
+        def _colinear_with_king(fr: int, to: int) -> bool:
+            kbb_local = self.bb[WK] if self.side_to_move == "w" else self.bb[BK]
+            if kbb_local == 0:
+                return True
+            ks_local = (kbb_local & -kbb_local).bit_length() - 1
+            fx, fy = fr % 8, fr // 8
+            tx, ty = to % 8, to // 8
+            kx, ky = ks_local % 8, ks_local // 8
+            v1x, v1y = fx - kx, fy - ky
+            v2x, v2y = tx - kx, ty - ky
+            return v1x * v2y == v1y * v2x
+
+        pinned = _compute_pins()
+        if pinned:
+            moves = [
+                m
+                for m in moves
+                if (m.from_sq not in pinned) or _colinear_with_king(m.from_sq, m.to_sq)
+            ]
+
         # Legality filter: ensure our king is not left in check
         legal_caps: List[Move] = []
         for mv in moves:
