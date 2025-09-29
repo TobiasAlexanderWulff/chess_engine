@@ -14,6 +14,7 @@ BENCH_ITERATIONS ?= 3
 BENCH_OUT ?= assets/benchmarks/baseline-$(PROJECT_VERSION).json
 BENCH_PRETTY ?= 1
 BENCH_PROGRESS ?= 1
+BENCH_PROFILING ?=
 
 .PHONY: build run test lint format format-check hooks hooks-run ci bench
 
@@ -64,4 +65,5 @@ bench:
 		$(if $(BENCH_ITERATIONS),--iterations $(BENCH_ITERATIONS),) \
 		$(if $(BENCH_OUT),--out $(BENCH_OUT),) \
 		$(if $(BENCH_PRETTY),--pretty,) \
-		$(if $(BENCH_PROGRESS),--progress,)
+		$(if $(BENCH_PROGRESS),--progress,) \
+		$(if $(BENCH_PROFILING),--profiling,)

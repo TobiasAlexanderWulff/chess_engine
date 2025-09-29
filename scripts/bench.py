@@ -105,6 +105,7 @@ def bench_position(
     depth: Optional[int],
     tt_max_entries: Optional[int],
     iterations: int,
+    profiling: bool,
 ) -> Dict[str, Any]:
     # Resolve effective params (per-item override > global)
     eff_movetime = item.movetime_ms if item.movetime_ms is not None else movetime_ms
@@ -133,6 +134,7 @@ def bench_position(
             depth=depth_arg,
             movetime_ms=eff_movetime,
             tt_max_entries=tt_max_entries,
+            enable_profiling=profiling,
         )
         total_time += max(0, res.time_ms)
         total_nodes += max(0, res.nodes)
@@ -172,6 +174,8 @@ def bench_position(
         "tt_replacements": last.tt_replacements,
         "tt_size": last.tt_size,
         "hashfull": last.hashfull,
+        "gen_time_main_ms": getattr(last, "gen_time_main_ms", 0),
+        "gen_time_q_ms": getattr(last, "gen_time_q_ms", 0),
         "fail_high": last.fail_high,
         "fail_low": last.fail_low,
         "re_searches": last.re_searches,
@@ -192,6 +196,9 @@ def main() -> None:
         "--iterations", type=int, default=1, help="Repeat runs per position and average"
     )
     parser.add_argument("--out", type=str, default=None, help="Write JSON results to file path")
+    parser.add_argument(
+        "--profiling", action="store_true", help="Enable internal profiling in search"
+    )
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
     parser.add_argument(
         "--progress", action="store_true", help="Print per-position progress to stderr"
@@ -224,6 +231,7 @@ def main() -> None:
             depth=args.depth,
             tt_max_entries=tt_entries,
             iterations=max(1, args.iterations),
+            profiling=bool(args.profiling),
         )
         results.append(res)
         if args.progress:
@@ -260,6 +268,8 @@ def main() -> None:
             "total_nodes": total_nodes,
             "total_qnodes": total_qnodes,
             "overall_nps": overall_nps,
+            "total_gen_time_main_ms": sum(r.get("gen_time_main_ms", 0) for r in results),
+            "total_gen_time_q_ms": sum(r.get("gen_time_q_ms", 0) for r in results),
         },
     }
 

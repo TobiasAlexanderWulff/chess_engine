@@ -1,11 +1,11 @@
 {
   "meta": {
-    "timestamp": "2025-09-29T13:18:01Z",
+    "timestamp": "2025-09-29T13:39:43Z",
     "python": "3.11.9",
     "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
     "git": {
-      "commit": "6f030519cec33d88c6ab484d232a11c8fbd4fb75",
-      "describe": "6f03051-dirty"
+      "commit": "760d484fafaa0c2ced3d02a59193365541f26cfc",
+      "describe": "760d484-dirty"
     },
     "engine": {
       "version": "0.0.3"
@@ -25,32 +25,34 @@
       "name": "Start Position",
       "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
       "movetime_ms": 500,
-      "depth": 4,
-      "best_move": "g1f3",
+      "depth": 5,
+      "best_move": "e2e4",
       "score": {
-        "cp": 58
+        "cp": 50
       },
       "pv": [
-        "g1f3"
+        "e2e4"
       ],
-      "time_ms": 501,
-      "nodes": 2583,
-      "qnodes": 1207,
-      "nps": 5155,
-      "seldepth": 8,
-      "tt_hits": 6,
-      "tt_probes": 306,
-      "tt_stores": 231,
-      "tt_replacements": 16,
-      "tt_size": 231,
-      "hashfull": 0,
+      "time_ms": 500,
+      "nodes": 5071,
+      "qnodes": 2368,
+      "nps": 10142,
+      "seldepth": 9,
+      "tt_hits": 69,
+      "tt_probes": 768,
+      "tt_stores": 587,
+      "tt_replacements": 53,
+      "tt_size": 587,
+      "hashfull": 2,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
       "fail_high": 0,
       "fail_low": 1,
       "re_searches": 1,
       "iters": [
         {
           "depth": 1,
-          "time_ms": 7,
+          "time_ms": 3,
           "nodes": 49,
           "qnodes": 24,
           "fail_high": 0,
@@ -58,7 +60,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 101,
+          "time_ms": 50,
           "nodes": 565,
           "qnodes": 261,
           "fail_high": 0,
@@ -66,7 +68,7 @@
         },
         {
           "depth": 3,
-          "time_ms": 63,
+          "time_ms": 26,
           "nodes": 330,
           "qnodes": 148,
           "fail_high": 0,
@@ -74,9 +76,17 @@
         },
         {
           "depth": 4,
-          "time_ms": 329,
-          "nodes": 1644,
-          "qnodes": 777,
+          "time_ms": 272,
+          "nodes": 2675,
+          "qnodes": 1265,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 5,
+          "time_ms": 148,
+          "nodes": 1468,
+          "qnodes": 673,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -87,7 +97,7 @@
       "name": "Open Middlegame",
       "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq - 4 5",
       "movetime_ms": 500,
-      "depth": 3,
+      "depth": 4,
       "best_move": "d2d4",
       "score": {
         "cp": 94
@@ -95,24 +105,26 @@
       "pv": [
         "d2d4"
       ],
-      "time_ms": 503,
-      "nodes": 2359,
-      "qnodes": 1824,
-      "nps": 4689,
-      "seldepth": 11,
-      "tt_hits": 0,
-      "tt_probes": 102,
-      "tt_stores": 94,
-      "tt_replacements": 2,
-      "tt_size": 94,
+      "time_ms": 500,
+      "nodes": 4587,
+      "qnodes": 3603,
+      "nps": 9174,
+      "seldepth": 15,
+      "tt_hits": 29,
+      "tt_probes": 239,
+      "tt_stores": 159,
+      "tt_replacements": 6,
+      "tt_size": 159,
       "hashfull": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
       "fail_high": 0,
       "fail_low": 0,
       "re_searches": 0,
       "iters": [
         {
           "depth": 1,
-          "time_ms": 26,
+          "time_ms": 13,
           "nodes": 121,
           "qnodes": 87,
           "fail_high": 0,
@@ -120,7 +132,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 217,
+          "time_ms": 109,
           "nodes": 978,
           "qnodes": 785,
           "fail_high": 0,
@@ -128,9 +140,17 @@
         },
         {
           "depth": 3,
-          "time_ms": 259,
-          "nodes": 1262,
-          "qnodes": 954,
+          "time_ms": 355,
+          "nodes": 3342,
+          "qnodes": 2669,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 4,
+          "time_ms": 23,
+          "nodes": 217,
+          "qnodes": 83,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -141,7 +161,7 @@
       "name": "Closed Middlegame",
       "fen": "rnbq1rk1/ppp2ppp/3b1n2/3pp3/3P4/2P1PN2/PP3PPP/RNBQKB1R w KQ - 0 6",
       "movetime_ms": 500,
-      "depth": 4,
+      "depth": 5,
       "best_move": "f3e5",
       "score": {
         "cp": 56
@@ -149,24 +169,26 @@
       "pv": [
         "f3e5"
       ],
-      "time_ms": 505,
-      "nodes": 2709,
-      "qnodes": 2106,
-      "nps": 5364,
-      "seldepth": 12,
-      "tt_hits": 41,
-      "tt_probes": 174,
-      "tt_stores": 111,
-      "tt_replacements": 10,
-      "tt_size": 111,
+      "time_ms": 502,
+      "nodes": 5121,
+      "qnodes": 3864,
+      "nps": 10201,
+      "seldepth": 14,
+      "tt_hits": 42,
+      "tt_probes": 364,
+      "tt_stores": 245,
+      "tt_replacements": 45,
+      "tt_size": 245,
       "hashfull": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
       "fail_high": 1,
       "fail_low": 0,
       "re_searches": 1,
       "iters": [
         {
           "depth": 1,
-          "time_ms": 2,
+          "time_ms": 1,
           "nodes": 13,
           "qnodes": 9,
           "fail_high": 0,
@@ -174,7 +196,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 115,
+          "time_ms": 58,
           "nodes": 637,
           "qnodes": 500,
           "fail_high": 1,
@@ -182,7 +204,7 @@
         },
         {
           "depth": 3,
-          "time_ms": 121,
+          "time_ms": 62,
           "nodes": 593,
           "qnodes": 439,
           "fail_high": 0,
@@ -190,9 +212,17 @@
         },
         {
           "depth": 4,
-          "time_ms": 264,
-          "nodes": 1483,
-          "qnodes": 1174,
+          "time_ms": 319,
+          "nodes": 3287,
+          "qnodes": 2583,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 5,
+          "time_ms": 60,
+          "nodes": 651,
+          "qnodes": 380,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -203,34 +233,36 @@
       "name": "Tactical Knights",
       "fen": "r2q1rk1/pp2bppp/2n2n2/2bp4/3P4/2N1PN2/PPQ1BPPP/R1B2RK1 w - - 4 10",
       "movetime_ms": 500,
-      "depth": 3,
+      "depth": 4,
       "best_move": "d4c5",
       "score": {
-        "cp": 336
+        "cp": 334
       },
       "pv": [
         "d4c5",
         "e7c5",
-        "e3e4"
+        "f1d1"
       ],
       "time_ms": 503,
-      "nodes": 2911,
-      "qnodes": 2458,
-      "nps": 5787,
+      "nodes": 5452,
+      "qnodes": 4476,
+      "nps": 10838,
       "seldepth": 12,
-      "tt_hits": 0,
-      "tt_probes": 111,
-      "tt_stores": 107,
-      "tt_replacements": 2,
-      "tt_size": 107,
+      "tt_hits": 38,
+      "tt_probes": 179,
+      "tt_stores": 131,
+      "tt_replacements": 4,
+      "tt_size": 131,
       "hashfull": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
       "fail_high": 0,
       "fail_low": 0,
       "re_searches": 0,
       "iters": [
         {
           "depth": 1,
-          "time_ms": 4,
+          "time_ms": 2,
           "nodes": 21,
           "qnodes": 19,
           "fail_high": 0,
@@ -238,7 +270,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 248,
+          "time_ms": 133,
           "nodes": 1492,
           "qnodes": 1352,
           "fail_high": 0,
@@ -246,9 +278,17 @@
         },
         {
           "depth": 3,
-          "time_ms": 249,
-          "nodes": 1408,
-          "qnodes": 1094,
+          "time_ms": 183,
+          "nodes": 2028,
+          "qnodes": 1675,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 4,
+          "time_ms": 183,
+          "nodes": 1772,
+          "qnodes": 1303,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -259,7 +299,7 @@
       "name": "Endgame KQ vs KR",
       "fen": "8/8/8/8/8/8/5k2/6KQ w - - 0 1",
       "movetime_ms": 500,
-      "depth": 5,
+      "depth": 6,
       "best_move": "g1h2",
       "score": {
         "cp": 868
@@ -269,23 +309,25 @@
         "f2e3"
       ],
       "time_ms": 500,
-      "nodes": 2897,
-      "qnodes": 1210,
-      "nps": 5794,
+      "nodes": 5849,
+      "qnodes": 2427,
+      "nps": 11698,
       "seldepth": 10,
-      "tt_hits": 115,
-      "tt_probes": 678,
-      "tt_stores": 329,
-      "tt_replacements": 70,
-      "tt_size": 329,
-      "hashfull": 1,
+      "tt_hits": 356,
+      "tt_probes": 1449,
+      "tt_stores": 692,
+      "tt_replacements": 180,
+      "tt_size": 692,
+      "hashfull": 2,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
       "fail_high": 1,
       "fail_low": 0,
       "re_searches": 1,
       "iters": [
         {
           "depth": 1,
-          "time_ms": 1,
+          "time_ms": 0,
           "nodes": 10,
           "qnodes": 3,
           "fail_high": 0,
@@ -293,7 +335,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 10,
+          "time_ms": 6,
           "nodes": 68,
           "qnodes": 29,
           "fail_high": 1,
@@ -301,7 +343,7 @@
         },
         {
           "depth": 3,
-          "time_ms": 39,
+          "time_ms": 18,
           "nodes": 235,
           "qnodes": 100,
           "fail_high": 0,
@@ -309,7 +351,7 @@
         },
         {
           "depth": 4,
-          "time_ms": 102,
+          "time_ms": 50,
           "nodes": 603,
           "qnodes": 246,
           "fail_high": 0,
@@ -317,9 +359,17 @@
         },
         {
           "depth": 5,
-          "time_ms": 346,
-          "nodes": 2017,
-          "qnodes": 854,
+          "time_ms": 310,
+          "nodes": 3728,
+          "qnodes": 1593,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 6,
+          "time_ms": 113,
+          "nodes": 1368,
+          "qnodes": 525,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -338,10 +388,10 @@
       "pv": [
         "g1g2"
       ],
-      "time_ms": 5,
+      "time_ms": 2,
       "nodes": 128,
       "qnodes": 0,
-      "nps": 25600,
+      "nps": 64000,
       "seldepth": 1,
       "tt_hits": 0,
       "tt_probes": 64,
@@ -349,6 +399,8 @@
       "tt_replacements": 63,
       "tt_size": 1,
       "hashfull": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
       "fail_high": 0,
       "fail_low": 0,
       "re_searches": 0,
@@ -870,9 +922,11 @@
   ],
   "summary": {
     "positions": 6,
-    "total_time_ms": 7576,
-    "total_nodes": 13587,
-    "total_qnodes": 8805,
-    "overall_nps": 1793
+    "total_time_ms": 7548,
+    "total_nodes": 26208,
+    "total_qnodes": 16738,
+    "overall_nps": 3472,
+    "total_gen_time_main_ms": 0,
+    "total_gen_time_q_ms": 0
   }
 }
