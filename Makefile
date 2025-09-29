@@ -2,7 +2,17 @@ PYTHON := python3
 DEPTH ?= 3
 FEN ?=
 
-.PHONY: build run test lint format format-check hooks hooks-run ci
+# Bench configuration (override via environment/CLI)
+BENCH_POSITIONS ?= assets/benchmarks/positions.json
+BENCH_MOVETIME_MS ?=
+BENCH_DEPTH ?=
+BENCH_HASH_MB ?= 16
+BENCH_ITERATIONS ?= 1
+BENCH_OUT ?= assets/benchmarks/baseline-$(shell date +%Y%m%d).json
+BENCH_PRETTY ?= 1
+BENCH_PROGRESS ?= 1
+
+.PHONY: build run test lint format format-check hooks hooks-run ci bench
 
 build:
 	@echo "Nothing to build (Python project)."
@@ -40,3 +50,15 @@ ci:
 .PHONY: perft
 perft:
 	$(PYTHON) scripts/perft.py --depth $(DEPTH) $(if $(FEN),--fen "$(FEN)",)
+
+# Run engine benchmarks over a positions suite and write a baseline JSON
+bench:
+	$(PYTHON) scripts/bench.py \
+		--positions $(BENCH_POSITIONS) \
+		$(if $(BENCH_MOVETIME_MS),--movetime-ms $(BENCH_MOVETIME_MS),) \
+		$(if $(BENCH_DEPTH),--depth $(BENCH_DEPTH),) \
+		$(if $(BENCH_HASH_MB),--hash-mb $(BENCH_HASH_MB),) \
+		$(if $(BENCH_ITERATIONS),--iterations $(BENCH_ITERATIONS),) \
+		$(if $(BENCH_OUT),--out $(BENCH_OUT),) \
+		$(if $(BENCH_PRETTY),--pretty,) \
+		$(if $(BENCH_PROGRESS),--progress,)
