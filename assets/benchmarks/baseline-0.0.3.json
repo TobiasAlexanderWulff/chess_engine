@@ -1,11 +1,11 @@
 {
   "meta": {
-    "timestamp": "2025-09-29T13:39:43Z",
+    "timestamp": "2025-09-29T13:45:20Z",
     "python": "3.11.9",
     "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
     "git": {
-      "commit": "760d484fafaa0c2ced3d02a59193365541f26cfc",
-      "describe": "760d484-dirty"
+      "commit": "63dec8ad2f296d66c8f8645bf3b96f758b57e2a5",
+      "describe": "63dec8a-dirty"
     },
     "engine": {
       "version": "0.0.3"
@@ -34,15 +34,15 @@
         "e2e4"
       ],
       "time_ms": 500,
-      "nodes": 5071,
-      "qnodes": 2368,
-      "nps": 10142,
+      "nodes": 5121,
+      "qnodes": 2389,
+      "nps": 10242,
       "seldepth": 9,
       "tt_hits": 69,
-      "tt_probes": 768,
-      "tt_stores": 587,
-      "tt_replacements": 53,
-      "tt_size": 587,
+      "tt_probes": 774,
+      "tt_stores": 592,
+      "tt_replacements": 54,
+      "tt_size": 592,
       "hashfull": 2,
       "gen_time_main_ms": 0,
       "gen_time_q_ms": 0,
@@ -60,7 +60,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 50,
+          "time_ms": 51,
           "nodes": 565,
           "qnodes": 261,
           "fail_high": 0,
@@ -76,7 +76,7 @@
         },
         {
           "depth": 4,
-          "time_ms": 272,
+          "time_ms": 264,
           "nodes": 2675,
           "qnodes": 1265,
           "fail_high": 0,
@@ -84,9 +84,9 @@
         },
         {
           "depth": 5,
-          "time_ms": 148,
-          "nodes": 1468,
-          "qnodes": 673,
+          "time_ms": 154,
+          "nodes": 1507,
+          "qnodes": 696,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -98,23 +98,23 @@
       "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq - 4 5",
       "movetime_ms": 500,
       "depth": 4,
-      "best_move": "d2d4",
+      "best_move": "c4f7",
       "score": {
-        "cp": 94
+        "cp": 144
       },
       "pv": [
-        "d2d4"
+        "c4f7"
       ],
       "time_ms": 500,
-      "nodes": 4587,
-      "qnodes": 3603,
-      "nps": 9174,
+      "nodes": 4561,
+      "qnodes": 3599,
+      "nps": 9122,
       "seldepth": 15,
       "tt_hits": 29,
-      "tt_probes": 239,
-      "tt_stores": 159,
-      "tt_replacements": 6,
-      "tt_size": 159,
+      "tt_probes": 227,
+      "tt_stores": 151,
+      "tt_replacements": 4,
+      "tt_size": 151,
       "hashfull": 0,
       "gen_time_main_ms": 0,
       "gen_time_q_ms": 0,
@@ -124,7 +124,7 @@
       "iters": [
         {
           "depth": 1,
-          "time_ms": 13,
+          "time_ms": 12,
           "nodes": 121,
           "qnodes": 87,
           "fail_high": 0,
@@ -132,7 +132,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 109,
+          "time_ms": 110,
           "nodes": 978,
           "qnodes": 785,
           "fail_high": 0,
@@ -140,7 +140,7 @@
         },
         {
           "depth": 3,
-          "time_ms": 355,
+          "time_ms": 360,
           "nodes": 3342,
           "qnodes": 2669,
           "fail_high": 0,
@@ -148,9 +148,9 @@
         },
         {
           "depth": 4,
-          "time_ms": 23,
-          "nodes": 217,
-          "qnodes": 83,
+          "time_ms": 16,
+          "nodes": 132,
+          "qnodes": 66,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -170,15 +170,15 @@
         "f3e5"
       ],
       "time_ms": 502,
-      "nodes": 5121,
-      "qnodes": 3864,
-      "nps": 10201,
+      "nodes": 5100,
+      "qnodes": 3847,
+      "nps": 10159,
       "seldepth": 14,
       "tt_hits": 42,
-      "tt_probes": 364,
-      "tt_stores": 245,
-      "tt_replacements": 45,
-      "tt_size": 245,
+      "tt_probes": 347,
+      "tt_stores": 229,
+      "tt_replacements": 44,
+      "tt_size": 229,
       "hashfull": 0,
       "gen_time_main_ms": 0,
       "gen_time_q_ms": 0,
@@ -196,7 +196,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 58,
+          "time_ms": 60,
           "nodes": 637,
           "qnodes": 500,
           "fail_high": 1,
@@ -204,7 +204,7 @@
         },
         {
           "depth": 3,
-          "time_ms": 62,
+          "time_ms": 61,
           "nodes": 593,
           "qnodes": 439,
           "fail_high": 0,
@@ -212,7 +212,7 @@
         },
         {
           "depth": 4,
-          "time_ms": 319,
+          "time_ms": 333,
           "nodes": 3287,
           "qnodes": 2583,
           "fail_high": 0,
@@ -220,9 +220,9 @@
         },
         {
           "depth": 5,
-          "time_ms": 60,
-          "nodes": 651,
-          "qnodes": 380,
+          "time_ms": 46,
+          "nodes": 531,
+          "qnodes": 289,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -243,16 +243,16 @@
         "e7c5",
         "f1d1"
       ],
-      "time_ms": 503,
-      "nodes": 5452,
-      "qnodes": 4476,
-      "nps": 10838,
+      "time_ms": 504,
+      "nodes": 5368,
+      "qnodes": 4400,
+      "nps": 10650,
       "seldepth": 12,
       "tt_hits": 38,
-      "tt_probes": 179,
-      "tt_stores": 131,
+      "tt_probes": 181,
+      "tt_stores": 133,
       "tt_replacements": 4,
-      "tt_size": 131,
+      "tt_size": 133,
       "hashfull": 0,
       "gen_time_main_ms": 0,
       "gen_time_q_ms": 0,
@@ -270,7 +270,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 133,
+          "time_ms": 132,
           "nodes": 1492,
           "qnodes": 1352,
           "fail_high": 0,
@@ -278,7 +278,7 @@
         },
         {
           "depth": 3,
-          "time_ms": 183,
+          "time_ms": 190,
           "nodes": 2028,
           "qnodes": 1675,
           "fail_high": 0,
@@ -286,9 +286,9 @@
         },
         {
           "depth": 4,
-          "time_ms": 183,
-          "nodes": 1772,
-          "qnodes": 1303,
+          "time_ms": 180,
+          "nodes": 1840,
+          "qnodes": 1367,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -309,15 +309,15 @@
         "f2e3"
       ],
       "time_ms": 500,
-      "nodes": 5849,
-      "qnodes": 2427,
-      "nps": 11698,
+      "nodes": 6073,
+      "qnodes": 2523,
+      "nps": 12146,
       "seldepth": 10,
-      "tt_hits": 356,
-      "tt_probes": 1449,
-      "tt_stores": 692,
-      "tt_replacements": 180,
-      "tt_size": 692,
+      "tt_hits": 361,
+      "tt_probes": 1471,
+      "tt_stores": 695,
+      "tt_replacements": 192,
+      "tt_size": 695,
       "hashfull": 2,
       "gen_time_main_ms": 0,
       "gen_time_q_ms": 0,
@@ -335,7 +335,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 6,
+          "time_ms": 4,
           "nodes": 68,
           "qnodes": 29,
           "fail_high": 1,
@@ -351,7 +351,7 @@
         },
         {
           "depth": 4,
-          "time_ms": 50,
+          "time_ms": 47,
           "nodes": 603,
           "qnodes": 246,
           "fail_high": 0,
@@ -359,7 +359,7 @@
         },
         {
           "depth": 5,
-          "time_ms": 310,
+          "time_ms": 309,
           "nodes": 3728,
           "qnodes": 1593,
           "fail_high": 0,
@@ -367,9 +367,9 @@
         },
         {
           "depth": 6,
-          "time_ms": 113,
-          "nodes": 1368,
-          "qnodes": 525,
+          "time_ms": 119,
+          "nodes": 1461,
+          "qnodes": 566,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -922,10 +922,10 @@
   ],
   "summary": {
     "positions": 6,
-    "total_time_ms": 7548,
-    "total_nodes": 26208,
-    "total_qnodes": 16738,
-    "overall_nps": 3472,
+    "total_time_ms": 7545,
+    "total_nodes": 26351,
+    "total_qnodes": 16758,
+    "overall_nps": 3492,
     "total_gen_time_main_ms": 0,
     "total_gen_time_q_ms": 0
   }

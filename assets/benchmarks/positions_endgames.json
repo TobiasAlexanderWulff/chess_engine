@@ -1,0 +1,55 @@
+{
+  "suite": "endgames",
+  "description": "Endgame-focused positions to isolate and profile quiescence and king-heavy move generation.",
+  "positions": [
+    {
+      "id": "endgame_kq_kr",
+      "name": "KQ vs KR",
+      "fen": "8/8/8/8/8/8/5k2/6KQ w - - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kpp_k",
+      "name": "KPP vs K",
+      "fen": "8/8/8/8/8/5P2/4P1k1/6K1 w - - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kr_k",
+      "name": "KR vs K",
+      "fen": "8/8/8/8/8/6k1/8/6RK w - - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kbn_k",
+      "name": "KBN vs K",
+      "fen": "8/8/8/8/8/4k3/2B2N2/6K1 w - - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kbb_k",
+      "name": "KBB vs K",
+      "fen": "8/8/8/8/8/4k3/2B3B1/6K1 w - - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kpk",
+      "name": "KPK",
+      "fen": "8/8/8/8/4k3/8/3P4/4K3 w - - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kr_kp",
+      "name": "KR vs KP",
+      "fen": "8/8/8/8/8/6k1/5p2/6RK w - - 0 1",
+      "movetime_ms": 500
+    },
+    {
+      "id": "endgame_kq_kb",
+      "name": "KQ vs KB",
+      "fen": "8/8/8/8/8/6k1/5b2/6KQ w - - 0 1",
+      "movetime_ms": 500
+    }
+  ]
+}
+
