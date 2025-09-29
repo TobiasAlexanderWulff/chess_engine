@@ -125,6 +125,35 @@ Next steps:
   include a direct diff here. If results are favorable, proceed to optimize capture-only
   generation to avoid calling full legal gen internally.
 
+### Apples-to-apples: v0.0.2-long vs v0.0.3
+
+Comparison using the same budget (2s/position, 3 iterations), positions suite unchanged.
+
+- Artifacts: `assets/benchmarks/baseline-0.0.2-long.json` (pre-capture-only),
+  `assets/benchmarks/baseline-0.0.3.json` (capture-only qsearch).
+- Command: `python3 scripts/bench_diff.py --old assets/benchmarks/baseline-0.0.2-long.json --new assets/benchmarks/baseline-0.0.3.json`.
+
+Overall summary (v0.0.2-long → v0.0.3):
+- nodes: 14,600 → 10,238 (−29.9%)
+- time_ms: 2,514 → 2,532 (+0.7%)
+- nps: 5,807 → 4,043 (−30.4%)
+
+Per-position (examples):
+- startpos: depth 4 → 4, nps 5,812 → 4,439 (−23.6%).
+- open_midgame: depth 3 → 3, nps 4,396 → 2,707 (−38.4%).
+- endgame KQ vs KR: depth 5 → 4, nps 10,108 → 6,167 (−39.0%).
+
+Interpretation:
+- Current capture-only implementation filters from full legal generation, which adds overhead
+  in quiescence compared to the prior approach (full legal gen + inline filtering in qsearch).
+  Without a true pseudo-legal capture generator, expected gains are not realized.
+
+Plan adjustment (next steps):
+- Implement pseudo-legal `generate_captures_fast()` and `generate_evasions_fast()` that avoid
+  cloning or computing full legal moves; then apply minimal legality tests only where needed
+  (e.g., king capture avoidance, pinned masks). Replace current helpers and re-benchmark.
+- Profile hot paths within qsearch to validate reductions in move list construction time.
+
 ## Changelog
 - 2025-09-26: Updated scope to reflect shipped TT, ordering, aspiration, and telemetry; noted
   outstanding benchmarking/tuning work.
