@@ -4,6 +4,9 @@ import os
 import struct
 from typing import Dict, List, Optional, Tuple
 
+# Import the precomputed Polyglot random numbers
+from .polyglot_randoms import POLYGLOT_RANDOM_ARRAY
+
 from ...engine.game import Game
 from ...engine.move import Move
 
@@ -26,9 +29,39 @@ def _init_polyglot_randoms() -> None:
     if PG_RANDOM_PSQ:
         return
     # Precomputed values (truncated not allowed); raise if not provided.
-    raise NotImplementedError(
-        "Polyglot random tables not embedded. Populate PG_RANDOM_PSQ/CASTLE/EP/TURN."
-    )
+    arr = list(POLYGLOT_RANDOM_ARRAY)
+    if len(arr) < 12 * 64 + 4 + 8 + 1:
+        raise ValueError("POLYGLOT_RANDOM_ARRAY is too short")
+
+    # piece-square tables
+    psq_flat = arr[: 12 * 64]
+    PG_RANDOM_PSQ = [psq_flat[i * 64 : (i + 1) * 64] for i in range(12)]
+    idx = 12 * 64
+
+    # castling base (K,Q,k,q): 4 base values
+    cK, cQ, ck, cq = arr[idx : idx + 4]
+    idx += 4
+    # build 16 entries for bitmask index (K=1, Q=2, k=4, q=8)
+    table = [0] * 16
+    for mask in range(16):
+        v = 0
+        if mask & 1:
+            v ^= cK
+        if mask & 2:
+            v ^= cQ
+        if mask & 4:
+            v ^= ck
+        if mask & 8:
+            v ^= cq
+        table[mask] = v
+    PG_RANDOM_CASTLE = table
+
+    # en-passant files (8)
+    PG_RANDOM_EP = arr[idx : idx + 8]
+    idx += 8
+
+    # side to move
+    PG_RANDOM_TURN = arr[idx]
 
 
 def _polyglot_castle_index(castling: str) -> int:
