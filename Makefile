@@ -15,6 +15,7 @@ BENCH_OUT ?= assets/benchmarks/baseline-$(PROJECT_VERSION).json
 BENCH_PRETTY ?= 1
 BENCH_PROGRESS ?= 1
 BENCH_PROFILING ?=
+BENCH_PIN_PREFILTER ?=
 BENCH_KING_SEE_THRESH ?=
 
 .PHONY: build run test lint format format-check hooks hooks-run ci bench
@@ -68,4 +69,5 @@ bench:
 		$(if $(BENCH_PRETTY),--pretty,) \
 		$(if $(BENCH_PROGRESS),--progress,) \
 		$(if $(BENCH_PROFILING),--profiling,) \
+		$(if $(BENCH_PIN_PREFILTER),--pin-prefilter,)
 		$(if $(BENCH_KING_SEE_THRESH),--king-see-thresh $(BENCH_KING_SEE_THRESH),)

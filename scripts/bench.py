@@ -107,6 +107,7 @@ def bench_position(
     iterations: int,
     profiling: bool,
     king_see_thresh: Optional[int],
+    pin_prefilter: bool,
 ) -> Dict[str, Any]:
     # Resolve effective params (per-item override > global)
     eff_movetime = item.movetime_ms if item.movetime_ms is not None else movetime_ms
@@ -137,6 +138,7 @@ def bench_position(
             tt_max_entries=tt_max_entries,
             enable_profiling=profiling,
             king_see_prune_threshold=king_see_thresh,
+            enable_quiet_pin_prefilter=pin_prefilter,
         )
         total_time += max(0, res.time_ms)
         total_nodes += max(0, res.nodes)
@@ -208,6 +210,9 @@ def main() -> None:
         "--profiling", action="store_true", help="Enable internal profiling in search"
     )
     parser.add_argument(
+        "--pin-prefilter", action="store_true", help="Enable quiet pinned-piece prefilter"
+    )
+    parser.add_argument(
         "--king-see-thresh",
         type=int,
         default=None,
@@ -247,6 +252,7 @@ def main() -> None:
             iterations=max(1, args.iterations),
             profiling=bool(args.profiling),
             king_see_thresh=args.king_see_thresh,
+            pin_prefilter=bool(args.pin_prefilter),
         )
         results.append(res)
         if args.progress:

@@ -218,7 +218,7 @@ class Board:
                 return PIECE_TO_CHAR[idx]
         return None
 
-    def generate_legal_moves(self) -> List[Move]:
+    def generate_legal_moves(self, *, prefilter_pins: bool = False) -> List[Move]:
         """Return pseudo-legal moves with minimal legality filtering.
 
         Returns:
@@ -297,7 +297,10 @@ class Board:
                         break
             return pins, ks
 
-        pinned_stm, ks_stm = _compute_pins_for_side(self.side_to_move == "w")
+        if prefilter_pins:
+            pinned_stm, ks_stm = _compute_pins_for_side(self.side_to_move == "w")
+        else:
+            pinned_stm, ks_stm = set(), -1
 
         if self.side_to_move == "w":
             pawns = self.bb[WP]

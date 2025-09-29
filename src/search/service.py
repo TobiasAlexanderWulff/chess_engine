@@ -65,6 +65,7 @@ class SearchService:
         enable_futility: bool = True,
         enable_profiling: bool = False,
         king_see_prune_threshold: Optional[int] = None,
+        enable_quiet_pin_prefilter: bool = False,
         on_iter: Optional[
             Callable[
                 [
@@ -448,10 +449,14 @@ class SearchService:
             if enable_profiling:
                 nonlocal gen_time_main_ns
                 t0_gen = time.perf_counter_ns()
-                legal_precheck = board.generate_legal_moves()
+                legal_precheck = board.generate_legal_moves(
+                    prefilter_pins=enable_quiet_pin_prefilter
+                )
                 gen_time_main_ns += int(time.perf_counter_ns() - t0_gen)
             else:
-                legal_precheck = board.generate_legal_moves()
+                legal_precheck = board.generate_legal_moves(
+                    prefilter_pins=enable_quiet_pin_prefilter
+                )
             if not legal_precheck:
                 if in_check_now:
                     # Checkmated: distance-to-mate scores prefer quicker mates

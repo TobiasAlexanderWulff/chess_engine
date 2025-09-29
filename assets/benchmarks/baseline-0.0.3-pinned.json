@@ -1,0 +1,934 @@
+{
+  "meta": {
+    "timestamp": "2025-09-29T14:33:35Z",
+    "python": "3.11.9",
+    "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "git": {
+      "commit": "37afc87b94cdf80db01437038f443c85b4514eea",
+      "describe": "37afc87"
+    },
+    "engine": {
+      "version": "0.0.3"
+    },
+    "config": {
+      "positions_file": "assets/benchmarks/positions.json",
+      "iterations": 3,
+      "global_movetime_ms": 2000,
+      "global_depth": null,
+      "hash_mb": 16,
+      "tt_max_entries": 262144
+    }
+  },
+  "results": [
+    {
+      "id": "startpos",
+      "name": "Start Position",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "movetime_ms": 500,
+      "depth": 4,
+      "best_move": "g1f3",
+      "score": {
+        "cp": 58
+      },
+      "pv": [
+        "g1f3"
+      ],
+      "time_ms": 502,
+      "nodes": 2563,
+      "qnodes": 1195,
+      "nps": 5105,
+      "seldepth": 8,
+      "tt_hits": 6,
+      "tt_probes": 294,
+      "tt_stores": 219,
+      "tt_replacements": 16,
+      "tt_size": 219,
+      "hashfull": 0,
+      "gen_time_main_us": 0,
+      "gen_time_q_us": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
+      "q_cap_candidates": 172,
+      "q_king_cap_candidates": 3,
+      "q_king_cap_see_pruned": 0,
+      "q_evasions_generated": 39,
+      "fail_high": 0,
+      "fail_low": 1,
+      "re_searches": 1,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 7,
+          "nodes": 49,
+          "qnodes": 24,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 2,
+          "time_ms": 105,
+          "nodes": 565,
+          "qnodes": 261,
+          "fail_high": 0,
+          "fail_low": 1
+        },
+        {
+          "depth": 3,
+          "time_ms": 59,
+          "nodes": 330,
+          "qnodes": 148,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 4,
+          "time_ms": 330,
+          "nodes": 1612,
+          "qnodes": 757,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "open_midgame",
+      "name": "Open Middlegame",
+      "fen": "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq - 4 5",
+      "movetime_ms": 500,
+      "depth": 3,
+      "best_move": "d2d4",
+      "score": {
+        "cp": 94
+      },
+      "pv": [
+        "d2d4"
+      ],
+      "time_ms": 504,
+      "nodes": 2600,
+      "qnodes": 2022,
+      "nps": 5158,
+      "seldepth": 11,
+      "tt_hits": 0,
+      "tt_probes": 104,
+      "tt_stores": 94,
+      "tt_replacements": 2,
+      "tt_size": 94,
+      "hashfull": 0,
+      "gen_time_main_us": 0,
+      "gen_time_q_us": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
+      "q_cap_candidates": 1783,
+      "q_king_cap_candidates": 19,
+      "q_king_cap_see_pruned": 0,
+      "q_evasions_generated": 629,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 24,
+          "nodes": 121,
+          "qnodes": 87,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 2,
+          "time_ms": 188,
+          "nodes": 978,
+          "qnodes": 785,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 3,
+          "time_ms": 292,
+          "nodes": 1467,
+          "qnodes": 1118,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "closed_midgame",
+      "name": "Closed Middlegame",
+      "fen": "rnbq1rk1/ppp2ppp/3b1n2/3pp3/3P4/2P1PN2/PP3PPP/RNBQKB1R w KQ - 0 6",
+      "movetime_ms": 500,
+      "depth": 4,
+      "best_move": "f3e5",
+      "score": {
+        "cp": 56
+      },
+      "pv": [
+        "f3e5"
+      ],
+      "time_ms": 503,
+      "nodes": 2722,
+      "qnodes": 2103,
+      "nps": 5411,
+      "seldepth": 12,
+      "tt_hits": 41,
+      "tt_probes": 174,
+      "tt_stores": 111,
+      "tt_replacements": 10,
+      "tt_size": 111,
+      "hashfull": 0,
+      "gen_time_main_us": 0,
+      "gen_time_q_us": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
+      "q_cap_candidates": 2409,
+      "q_king_cap_candidates": 8,
+      "q_king_cap_see_pruned": 0,
+      "q_evasions_generated": 222,
+      "fail_high": 1,
+      "fail_low": 0,
+      "re_searches": 1,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 2,
+          "nodes": 13,
+          "qnodes": 9,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 2,
+          "time_ms": 118,
+          "nodes": 637,
+          "qnodes": 500,
+          "fail_high": 1,
+          "fail_low": 0
+        },
+        {
+          "depth": 3,
+          "time_ms": 120,
+          "nodes": 593,
+          "qnodes": 439,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 4,
+          "time_ms": 261,
+          "nodes": 1462,
+          "qnodes": 1153,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "tactics_knights",
+      "name": "Tactical Knights",
+      "fen": "r2q1rk1/pp2bppp/2n2n2/2bp4/3P4/2N1PN2/PPQ1BPPP/R1B2RK1 w - - 4 10",
+      "movetime_ms": 500,
+      "depth": 3,
+      "best_move": "d4c5",
+      "score": {
+        "cp": 336
+      },
+      "pv": [
+        "d4c5",
+        "e7c5",
+        "e3e4"
+      ],
+      "time_ms": 504,
+      "nodes": 3085,
+      "qnodes": 2622,
+      "nps": 6121,
+      "seldepth": 12,
+      "tt_hits": 3,
+      "tt_probes": 115,
+      "tt_stores": 108,
+      "tt_replacements": 3,
+      "tt_size": 108,
+      "hashfull": 0,
+      "gen_time_main_us": 0,
+      "gen_time_q_us": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
+      "q_cap_candidates": 2939,
+      "q_king_cap_candidates": 4,
+      "q_king_cap_see_pruned": 0,
+      "q_evasions_generated": 412,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 3,
+          "nodes": 21,
+          "qnodes": 19,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 2,
+          "time_ms": 226,
+          "nodes": 1492,
+          "qnodes": 1352,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 3,
+          "time_ms": 274,
+          "nodes": 1504,
+          "qnodes": 1186,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "endgame_kq_kr",
+      "name": "Endgame KQ vs KR",
+      "fen": "8/8/8/8/8/8/5k2/6KQ w - - 0 1",
+      "movetime_ms": 500,
+      "depth": 5,
+      "best_move": "g1h2",
+      "score": {
+        "cp": 868
+      },
+      "pv": [
+        "g1h2",
+        "f2e3"
+      ],
+      "time_ms": 500,
+      "nodes": 2999,
+      "qnodes": 1261,
+      "nps": 5998,
+      "seldepth": 10,
+      "tt_hits": 124,
+      "tt_probes": 705,
+      "tt_stores": 343,
+      "tt_replacements": 73,
+      "tt_size": 343,
+      "hashfull": 1,
+      "gen_time_main_us": 0,
+      "gen_time_q_us": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
+      "q_cap_candidates": 0,
+      "q_king_cap_candidates": 0,
+      "q_king_cap_see_pruned": 0,
+      "q_evasions_generated": 246,
+      "fail_high": 1,
+      "fail_low": 0,
+      "re_searches": 1,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 1,
+          "nodes": 10,
+          "qnodes": 3,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 2,
+          "time_ms": 9,
+          "nodes": 68,
+          "qnodes": 29,
+          "fail_high": 1,
+          "fail_low": 0
+        },
+        {
+          "depth": 3,
+          "time_ms": 36,
+          "nodes": 235,
+          "qnodes": 100,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 4,
+          "time_ms": 97,
+          "nodes": 603,
+          "qnodes": 246,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 5,
+          "time_ms": 356,
+          "nodes": 2144,
+          "qnodes": 905,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    },
+    {
+      "id": "endgame_kpp_k",
+      "name": "Endgame KPP vs K",
+      "fen": "8/8/8/8/8/5P2/4P1k1/6K1 w - - 0 1",
+      "movetime_ms": 500,
+      "depth": 64,
+      "best_move": "g1g2",
+      "score": {
+        "cp": 0
+      },
+      "pv": [
+        "g1g2"
+      ],
+      "time_ms": 5,
+      "nodes": 128,
+      "qnodes": 0,
+      "nps": 25600,
+      "seldepth": 1,
+      "tt_hits": 0,
+      "tt_probes": 64,
+      "tt_stores": 1,
+      "tt_replacements": 63,
+      "tt_size": 1,
+      "hashfull": 0,
+      "gen_time_main_us": 0,
+      "gen_time_q_us": 0,
+      "gen_time_main_ms": 0,
+      "gen_time_q_ms": 0,
+      "q_cap_candidates": 0,
+      "q_king_cap_candidates": 0,
+      "q_king_cap_see_pruned": 0,
+      "q_evasions_generated": 0,
+      "fail_high": 0,
+      "fail_low": 0,
+      "re_searches": 0,
+      "iters": [
+        {
+          "depth": 1,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 2,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 3,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 4,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 5,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 6,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 7,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 8,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 9,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 10,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 11,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 12,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 13,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 14,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 15,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 16,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 17,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 18,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 19,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 20,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 21,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 22,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 23,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 24,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 25,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 26,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 27,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 28,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 29,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 30,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 31,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 32,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 33,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 34,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 35,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 36,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 37,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 38,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 39,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 40,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 41,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 42,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 43,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 44,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 45,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 46,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 47,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 48,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 49,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 50,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 51,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 52,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 53,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 54,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 55,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 56,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 57,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 58,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 59,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 60,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 61,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 62,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 63,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 64,
+          "time_ms": 0,
+          "nodes": 2,
+          "qnodes": 0,
+          "fail_high": 0,
+          "fail_low": 0
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "positions": 6,
+    "total_time_ms": 7580,
+    "total_nodes": 14097,
+    "total_qnodes": 9203,
+    "overall_nps": 1859,
+    "total_gen_time_main_us": 0,
+    "total_gen_time_q_us": 0,
+    "total_gen_time_main_ms": 0,
+    "total_gen_time_q_ms": 0,
+    "total_q_cap_candidates": 7303,
+    "total_q_king_cap_candidates": 34,
+    "total_q_king_cap_see_pruned": 0,
+    "total_q_evasions_generated": 1548
+  }
+}
