@@ -1736,7 +1736,12 @@ class Board:
             own_occ = (
                 self.bb[WP] | self.bb[WN] | self.bb[WB] | self.bb[WR] | self.bb[WQ] | self.bb[WK]
                 if self.side_to_move == "w"
-                else self.bb[BP] | self.bb[BN] | self.bb[BB] | self.bb[BR] | self.bb[BQ] | self.bb[BK]
+                else self.bb[BP]
+                | self.bb[BN]
+                | self.bb[BB]
+                | self.bb[BR]
+                | self.bb[BQ]
+                | self.bb[BK]
             )
 
             def add_if_legal(fr: int, to: int, promo: Optional[str] = None) -> None:
@@ -1785,12 +1790,22 @@ class Board:
                         if fr2 >= 0 and ((self.bb[WP] >> fr2) & 1) and not ((occ_all >> mid) & 1):
                             add_if_legal(fr2, b)
                     # Knights that can reach b
-                    for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
+                    for df, dr in (
+                        (-1, 2),
+                        (1, 2),
+                        (-2, 1),
+                        (2, 1),
+                        (-2, -1),
+                        (2, -1),
+                        (-1, -2),
+                        (1, -2),
+                    ):
                         tf, tr = f_b + df, r_b + dr
                         if 0 <= tf < 8 and 0 <= tr < 8:
                             fr = tr * 8 + tf
                             if (self.bb[WN] >> fr) & 1:
                                 add_if_legal(fr, b)
+
                     # Sliding pieces to b (bishops/rooks/queens)
                     def try_slide_white(fr: int, df: int, dr: int) -> None:
                         # Verify no blockers along ray from fr -> b
@@ -1806,6 +1821,7 @@ class Board:
                                 return
                             if (occ_all >> sq) & 1:
                                 return
+
                     # Diagonals: bishops/queens
                     for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
                         tf, tr = f_b, r_b
@@ -1846,12 +1862,22 @@ class Board:
                         mid = b + 8
                         if fr2 <= 63 and ((self.bb[BP] >> fr2) & 1) and not ((occ_all >> mid) & 1):
                             add_if_legal(fr2, b)
-                    for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
+                    for df, dr in (
+                        (-1, 2),
+                        (1, 2),
+                        (-2, 1),
+                        (2, 1),
+                        (-2, -1),
+                        (2, -1),
+                        (-1, -2),
+                        (1, -2),
+                    ):
                         tf, tr = f_b + df, r_b + dr
                         if 0 <= tf < 8 and 0 <= tr < 8:
                             fr = tr * 8 + tf
                             if (self.bb[BN] >> fr) & 1:
                                 add_if_legal(fr, b)
+
                     def try_slide_black(fr: int, df: int, dr: int) -> None:
                         tf, tr = fr % 8, fr // 8
                         while True:
@@ -1865,6 +1891,7 @@ class Board:
                                 return
                             if (occ_all >> sq) & 1:
                                 return
+
                     for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
                         tf, tr = f_b, r_b
                         while True:

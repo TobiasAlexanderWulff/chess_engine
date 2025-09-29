@@ -802,11 +802,12 @@ class SearchService:
             moves_q.sort(key=cap_score, reverse=True)
 
             best_line: List[Move] = []
+            KING_SEE_PRUNE_THRESHOLD = 50  # centipawns
             for m in moves_q:
                 # Small SEE gate: skip obviously losing king captures when not in check
                 if not in_check_now:
                     att = attacker_piece_index(m)
-                    if att in (WK, BK) and see(m) < 0:
+                    if att in (WK, BK) and see(m) <= -KING_SEE_PRUNE_THRESHOLD:
                         q_king_cap_see_pruned += 1
                         continue
                 board.make_move(m)
