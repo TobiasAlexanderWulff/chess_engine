@@ -1564,3 +1564,174 @@ class Board:
         if not self.in_check():
             return []
         return self.generate_legal_moves()
+
+    def generate_evasions_fast(self) -> List[Move]:
+        """Generate legal check evasions with minimal work.
+
+        Strategy:
+        - Compute current side's king square and identify checking pieces.
+        - Always include king escapes to unattacked squares.
+        - If double-check: only king moves are legal.
+        - If single-check: allow captures of the checker (via capture generator filter) and
+          blocks on the line between a sliding checker and the king. Block detection falls back
+          to filtering full legal moves to the small set of interposing squares.
+        """
+        # Identify king square for side to move
+        if self.side_to_move == "w":
+            kbb = self.bb[WK]
+            opp_pawns, opp_knights, opp_bishops, opp_rooks, opp_queens, opp_king = (
+                BP,
+                BN,
+                BB,
+                BR,
+                BQ,
+                BK,
+            )
+            by_white_for_attack = True  # when probing attacks on black squares
+        else:
+            kbb = self.bb[BK]
+            opp_pawns, opp_knights, opp_bishops, opp_rooks, opp_queens, opp_king = (
+                WP,
+                WN,
+                WB,
+                WR,
+                WQ,
+                WK,
+            )
+            by_white_for_attack = False
+        if kbb == 0:
+            return []
+        ks = (kbb & -kbb).bit_length() - 1
+
+        # Detect checkers and, for sliders, interposing squares
+        checkers: List[int] = []
+        block_squares: List[int] = []
+        f = ks % 8
+        r = ks // 8
+
+        # Pawn checks
+        if self.side_to_move == "w":
+            # Black pawns attack from +7 and +9
+            if f < 7:
+                o = ks + 9
+                if o <= 63 and ((self.bb[opp_pawns] >> o) & 1):
+                    checkers.append(o)
+            if f > 0:
+                o = ks + 7
+                if o <= 63 and ((self.bb[opp_pawns] >> o) & 1):
+                    checkers.append(o)
+        else:
+            # White pawns attack from -7 and -9
+            if f > 0:
+                o = ks - 9
+                if o >= 0 and ((self.bb[opp_pawns] >> o) & 1):
+                    checkers.append(o)
+            if f < 7:
+                o = ks - 7
+                if o >= 0 and ((self.bb[opp_pawns] >> o) & 1):
+                    checkers.append(o)
+
+        # Knight checks
+        for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
+            tf, tr = f + df, r + dr
+            if 0 <= tf < 8 and 0 <= tr < 8:
+                o = tr * 8 + tf
+                if (self.bb[opp_knights] >> o) & 1:
+                    checkers.append(o)
+
+        # King adjacency (rare but possible in illegal states); treat as checker
+        for df, dr in ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)):
+            tf, tr = f + df, r + dr
+            if 0 <= tf < 8 and 0 <= tr < 8:
+                o = tr * 8 + tf
+                if (self.bb[opp_king] >> o) & 1:
+                    checkers.append(o)
+
+        # Sliders: bishops/queens (diagonals) and rooks/queens (orthogonals)
+        def scan_dirs(dirs: List[tuple[int, int]], bishop_like: bool) -> None:
+            nonlocal block_squares
+            for df, dr in dirs:
+                tf, tr = f, r
+                ray: List[int] = []
+                while True:
+                    tf += df
+                    tr += dr
+                    if not (0 <= tf < 8 and 0 <= tr < 8):
+                        break
+                    o = tr * 8 + tf
+                    # Accumulate ray until we hit a piece
+                    if (
+                        (
+                            self.bb[WP]
+                            | self.bb[WN]
+                            | self.bb[WB]
+                            | self.bb[WR]
+                            | self.bb[WQ]
+                            | self.bb[WK]
+                            | self.bb[BP]
+                            | self.bb[BN]
+                            | self.bb[BB]
+                            | self.bb[BR]
+                            | self.bb[BQ]
+                            | self.bb[BK]
+                        )
+                        >> o
+                    ) & 1:
+                        # First blocker
+                        if bishop_like:
+                            if ((self.bb[opp_bishops] >> o) & 1) or (
+                                (self.bb[opp_queens] >> o) & 1
+                            ):
+                                checkers.append(o)
+                                block_squares.extend(ray)
+                        else:
+                            if ((self.bb[opp_rooks] >> o) & 1) or ((self.bb[opp_queens] >> o) & 1):
+                                checkers.append(o)
+                                block_squares.extend(ray)
+                        break
+                    else:
+                        ray.append(o)
+
+        scan_dirs([(-1, -1), (1, -1), (-1, 1), (1, 1)], True)
+        scan_dirs([(-1, 0), (1, 0), (0, -1), (0, 1)], False)
+
+        # King escapes
+        moves: List[Move] = []
+        seen: set[tuple[int, int, Optional[str]]] = set()
+        own_occ = (
+            self.bb[WP] | self.bb[WN] | self.bb[WB] | self.bb[WR] | self.bb[WQ] | self.bb[WK]
+            if self.side_to_move == "w"
+            else self.bb[BP] | self.bb[BN] | self.bb[BB] | self.bb[BR] | self.bb[BQ] | self.bb[BK]
+        )
+        for df, dr in ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)):
+            tf, tr = f + df, r + dr
+            if 0 <= tf < 8 and 0 <= tr < 8:
+                to_sq = tr * 8 + tf
+                if ((own_occ >> to_sq) & 1) == 0:
+                    if not self._is_attacked(to_sq, by_white=by_white_for_attack):
+                        mv = Move(ks, to_sq)
+                        moves.append(mv)
+                        seen.add((mv.from_sq, mv.to_sq, mv.promotion))
+
+        if len(checkers) >= 2:
+            return moves
+
+        # Single checker: allow captures and blocks
+        extras: List[Move] = []
+        target = checkers[0] if checkers else None
+        if target is not None:
+            # Capture the checker: filter capture list to target square
+            for mv in self.generate_captures():
+                if mv.to_sq == target and (mv.from_sq, mv.to_sq, mv.promotion) not in seen:
+                    extras.append(mv)
+                    seen.add((mv.from_sq, mv.to_sq, mv.promotion))
+
+        # Blocks along the ray (for sliding checks)
+        if block_squares:
+            blocks_set = set(block_squares)
+            for mv in self.generate_legal_moves():
+                if mv.to_sq in blocks_set and (mv.from_sq, mv.to_sq, mv.promotion) not in seen:
+                    extras.append(mv)
+                    seen.add((mv.from_sq, mv.to_sq, mv.promotion))
+
+        return moves + extras

@@ -1,11 +1,11 @@
 {
   "meta": {
-    "timestamp": "2025-09-29T13:07:36Z",
+    "timestamp": "2025-09-29T13:14:59Z",
     "python": "3.11.9",
     "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
     "git": {
-      "commit": "d0148f6d67dfb6992a3cffcdc2e827d017a99eb1",
-      "describe": "d0148f6-dirty"
+      "commit": "fb725929b497d670b12f245e4298f6e43bd1885a",
+      "describe": "fb72592-dirty"
     },
     "engine": {
       "version": "0.0.3"
@@ -34,15 +34,15 @@
         "g1f3"
       ],
       "time_ms": 502,
-      "nodes": 2563,
-      "qnodes": 1195,
-      "nps": 5105,
+      "nodes": 2576,
+      "qnodes": 1204,
+      "nps": 5131,
       "seldepth": 8,
       "tt_hits": 6,
-      "tt_probes": 300,
-      "tt_stores": 226,
+      "tt_probes": 305,
+      "tt_stores": 231,
       "tt_replacements": 16,
-      "tt_size": 226,
+      "tt_size": 231,
       "hashfull": 0,
       "fail_high": 0,
       "fail_low": 1,
@@ -50,7 +50,7 @@
       "iters": [
         {
           "depth": 1,
-          "time_ms": 7,
+          "time_ms": 6,
           "nodes": 49,
           "qnodes": 24,
           "fail_high": 0,
@@ -75,8 +75,8 @@
         {
           "depth": 4,
           "time_ms": 333,
-          "nodes": 1631,
-          "qnodes": 770,
+          "nodes": 1643,
+          "qnodes": 777,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -95,16 +95,16 @@
       "pv": [
         "d2d4"
       ],
-      "time_ms": 502,
-      "nodes": 1916,
-      "qnodes": 1525,
-      "nps": 3816,
+      "time_ms": 505,
+      "nodes": 2338,
+      "qnodes": 1803,
+      "nps": 4629,
       "seldepth": 11,
       "tt_hits": 0,
-      "tt_probes": 97,
-      "tt_stores": 93,
-      "tt_replacements": 1,
-      "tt_size": 93,
+      "tt_probes": 102,
+      "tt_stores": 94,
+      "tt_replacements": 2,
+      "tt_size": 94,
       "hashfull": 0,
       "fail_high": 0,
       "fail_low": 0,
@@ -112,7 +112,7 @@
       "iters": [
         {
           "depth": 1,
-          "time_ms": 29,
+          "time_ms": 28,
           "nodes": 121,
           "qnodes": 87,
           "fail_high": 0,
@@ -120,17 +120,17 @@
         },
         {
           "depth": 2,
-          "time_ms": 263,
-          "nodes": 982,
-          "qnodes": 789,
+          "time_ms": 221,
+          "nodes": 978,
+          "qnodes": 785,
           "fail_high": 0,
           "fail_low": 0
         },
         {
           "depth": 3,
-          "time_ms": 208,
-          "nodes": 841,
-          "qnodes": 676,
+          "time_ms": 255,
+          "nodes": 1238,
+          "qnodes": 930,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -149,13 +149,13 @@
       "pv": [
         "f3e5"
       ],
-      "time_ms": 504,
-      "nodes": 2581,
-      "qnodes": 1977,
-      "nps": 5121,
+      "time_ms": 503,
+      "nodes": 2675,
+      "qnodes": 2073,
+      "nps": 5318,
       "seldepth": 12,
       "tt_hits": 41,
-      "tt_probes": 172,
+      "tt_probes": 173,
       "tt_stores": 111,
       "tt_replacements": 10,
       "tt_size": 111,
@@ -174,7 +174,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 126,
+          "time_ms": 117,
           "nodes": 637,
           "qnodes": 500,
           "fail_high": 1,
@@ -182,7 +182,7 @@
         },
         {
           "depth": 3,
-          "time_ms": 124,
+          "time_ms": 122,
           "nodes": 593,
           "qnodes": 439,
           "fail_high": 0,
@@ -190,9 +190,9 @@
         },
         {
           "depth": 4,
-          "time_ms": 249,
-          "nodes": 1341,
-          "qnodes": 1040,
+          "time_ms": 260,
+          "nodes": 1425,
+          "qnodes": 1118,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -213,16 +213,16 @@
         "e7c5",
         "e3e4"
       ],
-      "time_ms": 504,
-      "nodes": 2616,
-      "qnodes": 2257,
-      "nps": 5190,
+      "time_ms": 503,
+      "nodes": 2884,
+      "qnodes": 2437,
+      "nps": 5733,
       "seldepth": 12,
       "tt_hits": 0,
-      "tt_probes": 72,
-      "tt_stores": 68,
-      "tt_replacements": 1,
-      "tt_size": 68,
+      "tt_probes": 110,
+      "tt_stores": 104,
+      "tt_replacements": 2,
+      "tt_size": 104,
       "hashfull": 0,
       "fail_high": 0,
       "fail_low": 0,
@@ -230,7 +230,7 @@
       "iters": [
         {
           "depth": 1,
-          "time_ms": 5,
+          "time_ms": 4,
           "nodes": 21,
           "qnodes": 19,
           "fail_high": 0,
@@ -238,7 +238,7 @@
         },
         {
           "depth": 2,
-          "time_ms": 280,
+          "time_ms": 247,
           "nodes": 1492,
           "qnodes": 1352,
           "fail_high": 0,
@@ -246,9 +246,9 @@
         },
         {
           "depth": 3,
-          "time_ms": 219,
-          "nodes": 1125,
-          "qnodes": 904,
+          "time_ms": 250,
+          "nodes": 1403,
+          "qnodes": 1091,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -259,32 +259,29 @@
       "name": "Endgame KQ vs KR",
       "fen": "8/8/8/8/8/8/5k2/6KQ w - - 0 1",
       "movetime_ms": 500,
-      "depth": 4,
+      "depth": 5,
       "best_move": "g1h2",
       "score": {
-        "cp": 918
+        "cp": 868
       },
       "pv": [
         "g1h2",
-        "f2e3",
-        "h2g3",
-        "e3d4",
-        "h1c6"
+        "f2e3"
       ],
       "time_ms": 500,
-      "nodes": 3879,
-      "qnodes": 2080,
-      "nps": 7758,
-      "seldepth": 8,
-      "tt_hits": 101,
-      "tt_probes": 314,
-      "tt_stores": 118,
-      "tt_replacements": 22,
-      "tt_size": 118,
-      "hashfull": 0,
-      "fail_high": 0,
+      "nodes": 2894,
+      "qnodes": 1208,
+      "nps": 5788,
+      "seldepth": 10,
+      "tt_hits": 113,
+      "tt_probes": 671,
+      "tt_stores": 324,
+      "tt_replacements": 70,
+      "tt_size": 324,
+      "hashfull": 1,
+      "fail_high": 1,
       "fail_low": 0,
-      "re_searches": 0,
+      "re_searches": 1,
       "iters": [
         {
           "depth": 1,
@@ -296,25 +293,33 @@
         },
         {
           "depth": 2,
-          "time_ms": 14,
-          "nodes": 124,
-          "qnodes": 71,
-          "fail_high": 0,
+          "time_ms": 10,
+          "nodes": 68,
+          "qnodes": 29,
+          "fail_high": 1,
           "fail_low": 0
         },
         {
           "depth": 3,
-          "time_ms": 183,
-          "nodes": 1466,
-          "qnodes": 807,
+          "time_ms": 38,
+          "nodes": 235,
+          "qnodes": 100,
           "fail_high": 0,
           "fail_low": 0
         },
         {
           "depth": 4,
-          "time_ms": 301,
-          "nodes": 2283,
-          "qnodes": 1203,
+          "time_ms": 102,
+          "nodes": 603,
+          "qnodes": 246,
+          "fail_high": 0,
+          "fail_low": 0
+        },
+        {
+          "depth": 5,
+          "time_ms": 347,
+          "nodes": 1978,
+          "qnodes": 831,
           "fail_high": 0,
           "fail_low": 0
         }
@@ -865,9 +870,9 @@
   ],
   "summary": {
     "positions": 6,
-    "total_time_ms": 7574,
-    "total_nodes": 13683,
-    "total_qnodes": 9034,
-    "overall_nps": 1806
+    "total_time_ms": 7576,
+    "total_nodes": 13495,
+    "total_qnodes": 8725,
+    "overall_nps": 1781
   }
 }

@@ -35,6 +35,8 @@ class SearchResult:
     time_ms: int
     seldepth: int
     hashfull: int
+    gen_time_main_ms: int
+    gen_time_q_ms: int
 
 
 class SearchService:
@@ -55,6 +57,7 @@ class SearchService:
         enable_nmp: bool = True,
         enable_lmr: bool = True,
         enable_futility: bool = True,
+        enable_profiling: bool = False,
         on_iter: Optional[
             Callable[
                 [
@@ -104,6 +107,8 @@ class SearchService:
         board = game.board
         nodes = 0
         qnodes = 0
+        gen_time_main_ms = 0
+        gen_time_q_ms = 0
         # Repetition tracking: seed counts from the game so threefold inside search is detected
         rep_counts: Dict[int, int] = dict(getattr(game, "repetition", {}))
         tt_probes = 0
@@ -429,7 +434,13 @@ class SearchService:
                 d += 1
 
             # No legal moves: mate or stalemate
-            legal_precheck = board.generate_legal_moves()
+            if enable_profiling:
+                nonlocal gen_time_main_ms
+                t0_gen = time.perf_counter()
+                legal_precheck = board.generate_legal_moves()
+                gen_time_main_ms += int((time.perf_counter() - t0_gen) * 1000)
+            else:
+                legal_precheck = board.generate_legal_moves()
             if not legal_precheck:
                 if in_check_now:
                     # Checkmated: distance-to-mate scores prefer quicker mates
@@ -682,7 +693,7 @@ class SearchService:
             return best_score, best_line
 
         def qsearch(alpha: int, beta: int, ply: int) -> Tuple[int, List[Move]]:
-            nonlocal nodes, qnodes, seldepth_iter, seldepth_global
+            nonlocal nodes, qnodes, seldepth_iter, seldepth_global, gen_time_q_ms
             if ply > seldepth_iter:
                 seldepth_iter = ply
             if ply > seldepth_global:
@@ -703,7 +714,12 @@ class SearchService:
             in_check_now = board.in_check()
             # Immediate terminal states (no legal moves)
             if in_check_now:
-                evasions = board.generate_evasions()
+                if enable_profiling:
+                    t0_q = time.perf_counter()
+                    evasions = board.generate_evasions_fast()
+                    gen_time_q_ms += int((time.perf_counter() - t0_q) * 1000)
+                else:
+                    evasions = board.generate_evasions_fast()
                 if not evasions:
                     return -MATE_SCORE + ply, []
             else:
@@ -720,7 +736,12 @@ class SearchService:
             if in_check_now:
                 moves_q = board.generate_evasions()
             else:
-                moves_q = board.generate_captures()
+                if enable_profiling:
+                    t0_q2 = time.perf_counter()
+                    moves_q = board.generate_captures()
+                    gen_time_q_ms += int((time.perf_counter() - t0_q2) * 1000)
+                else:
+                    moves_q = board.generate_captures()
                 if not moves_q:
                     return alpha, []
 
@@ -965,4 +986,6 @@ class SearchService:
                 if (tt_max_entries is not None and tt_max_entries > 0)
                 else 0
             ),
+            gen_time_main_ms=gen_time_main_ms,
+            gen_time_q_ms=gen_time_q_ms,
         )

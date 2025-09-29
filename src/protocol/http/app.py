@@ -179,6 +179,8 @@ def create_app() -> FastAPI:
             "depth": res.depth,
             "time_ms": res.time_ms,
             "hashfull": res.hashfull,
+            "gen_time_main_ms": res.gen_time_main_ms,
+            "gen_time_q_ms": res.gen_time_q_ms,
         }
 
     @app.post("/api/perft")
