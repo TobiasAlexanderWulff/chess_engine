@@ -1726,12 +1726,170 @@ class Board:
                     extras.append(mv)
                     seen.add((mv.from_sq, mv.to_sq, mv.promotion))
 
-        # Blocks along the ray (for sliding checks)
+        # Blocks along the ray (for sliding checks) without full legal generation
         if block_squares:
             blocks_set = set(block_squares)
-            for mv in self.generate_legal_moves():
-                if mv.to_sq in blocks_set and (mv.from_sq, mv.to_sq, mv.promotion) not in seen:
-                    extras.append(mv)
-                    seen.add((mv.from_sq, mv.to_sq, mv.promotion))
+            # Occupancies
+            occ_all = 0
+            for bbv in self.bb:
+                occ_all |= bbv
+            own_occ = (
+                self.bb[WP] | self.bb[WN] | self.bb[WB] | self.bb[WR] | self.bb[WQ] | self.bb[WK]
+                if self.side_to_move == "w"
+                else self.bb[BP] | self.bb[BN] | self.bb[BB] | self.bb[BR] | self.bb[BQ] | self.bb[BK]
+            )
+
+            def add_if_legal(fr: int, to: int, promo: Optional[str] = None) -> None:
+                if (fr, to, promo) in seen:
+                    return
+                # Destination must be empty for a block (by definition of interposing square)
+                if (occ_all >> to) & 1:
+                    return
+                mv = Move(fr, to, promotion=promo)
+                new_bb = self._apply_pseudo_to_bb(mv)
+                if new_bb is None:
+                    return
+                if self.side_to_move == "w":
+                    kbb = new_bb[WK]
+                    if kbb == 0:
+                        return
+                    ks2 = (kbb & -kbb).bit_length() - 1
+                    if not self._is_attacked(ks2, by_white=False, bb=new_bb):
+                        extras.append(mv)
+                        seen.add((fr, to, promo))
+                else:
+                    kbb = new_bb[BK]
+                    if kbb == 0:
+                        return
+                    ks2 = (kbb & -kbb).bit_length() - 1
+                    if not self._is_attacked(ks2, by_white=True, bb=new_bb):
+                        extras.append(mv)
+                        seen.add((fr, to, promo))
+
+            # For each block square, try targeted pseudo-legal arrivals
+            for b in blocks_set:
+                # Skip if currently occupied (shouldn't happen for interposing squares)
+                if (occ_all >> b) & 1:
+                    continue
+                f_b, r_b = b % 8, b // 8
+                if self.side_to_move == "w":
+                    # Pawn single push
+                    fr = b - 8
+                    if fr >= 0 and ((self.bb[WP] >> fr) & 1):
+                        # Square b is empty by check above
+                        add_if_legal(fr, b)
+                    # Pawn double push from rank 2 to rank 4 (fr rank == 1, b rank == 3)
+                    if r_b == 3:
+                        fr2 = b - 16
+                        mid = b - 8
+                        if fr2 >= 0 and ((self.bb[WP] >> fr2) & 1) and not ((occ_all >> mid) & 1):
+                            add_if_legal(fr2, b)
+                    # Knights that can reach b
+                    for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
+                        tf, tr = f_b + df, r_b + dr
+                        if 0 <= tf < 8 and 0 <= tr < 8:
+                            fr = tr * 8 + tf
+                            if (self.bb[WN] >> fr) & 1:
+                                add_if_legal(fr, b)
+                    # Sliding pieces to b (bishops/rooks/queens)
+                    def try_slide_white(fr: int, df: int, dr: int) -> None:
+                        # Verify no blockers along ray from fr -> b
+                        tf, tr = fr % 8, fr // 8
+                        while True:
+                            tf += df
+                            tr += dr
+                            if not (0 <= tf < 8 and 0 <= tr < 8):
+                                return
+                            sq = tr * 8 + tf
+                            if sq == b:
+                                add_if_legal(fr, b)
+                                return
+                            if (occ_all >> sq) & 1:
+                                return
+                    # Diagonals: bishops/queens
+                    for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                        tf, tr = f_b, r_b
+                        # Step backwards to find potential from squares along opposite ray
+                        while True:
+                            tf += df
+                            tr += dr
+                            if not (0 <= tf < 8 and 0 <= tr < 8):
+                                break
+                            fr = tr * 8 + tf
+                            if (self.bb[WB] >> fr) & 1 or (self.bb[WQ] >> fr) & 1:
+                                # direction from fr to b is opposite (-df,-dr)
+                                try_slide_white(fr, -df, -dr)
+                                break
+                            if (occ_all >> fr) & 1:
+                                break
+                    # Orthogonals: rooks/queens
+                    for df, dr in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                        tf, tr = f_b, r_b
+                        while True:
+                            tf += df
+                            tr += dr
+                            if not (0 <= tf < 8 and 0 <= tr < 8):
+                                break
+                            fr = tr * 8 + tf
+                            if (self.bb[WR] >> fr) & 1 or (self.bb[WQ] >> fr) & 1:
+                                try_slide_white(fr, -df, -dr)
+                                break
+                            if (occ_all >> fr) & 1:
+                                break
+                else:
+                    # Black side to move
+                    fr = b + 8
+                    if fr <= 63 and ((self.bb[BP] >> fr) & 1):
+                        add_if_legal(fr, b)
+                    if r_b == 4:
+                        fr2 = b + 16
+                        mid = b + 8
+                        if fr2 <= 63 and ((self.bb[BP] >> fr2) & 1) and not ((occ_all >> mid) & 1):
+                            add_if_legal(fr2, b)
+                    for df, dr in ((-1, 2), (1, 2), (-2, 1), (2, 1), (-2, -1), (2, -1), (-1, -2), (1, -2)):
+                        tf, tr = f_b + df, r_b + dr
+                        if 0 <= tf < 8 and 0 <= tr < 8:
+                            fr = tr * 8 + tf
+                            if (self.bb[BN] >> fr) & 1:
+                                add_if_legal(fr, b)
+                    def try_slide_black(fr: int, df: int, dr: int) -> None:
+                        tf, tr = fr % 8, fr // 8
+                        while True:
+                            tf += df
+                            tr += dr
+                            if not (0 <= tf < 8 and 0 <= tr < 8):
+                                return
+                            sq = tr * 8 + tf
+                            if sq == b:
+                                add_if_legal(fr, b)
+                                return
+                            if (occ_all >> sq) & 1:
+                                return
+                    for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                        tf, tr = f_b, r_b
+                        while True:
+                            tf += df
+                            tr += dr
+                            if not (0 <= tf < 8 and 0 <= tr < 8):
+                                break
+                            fr = tr * 8 + tf
+                            if (self.bb[BB] >> fr) & 1 or (self.bb[BQ] >> fr) & 1:
+                                try_slide_black(fr, -df, -dr)
+                                break
+                            if (occ_all >> fr) & 1:
+                                break
+                    for df, dr in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                        tf, tr = f_b, r_b
+                        while True:
+                            tf += df
+                            tr += dr
+                            if not (0 <= tf < 8 and 0 <= tr < 8):
+                                break
+                            fr = tr * 8 + tf
+                            if (self.bb[BR] >> fr) & 1 or (self.bb[BQ] >> fr) & 1:
+                                try_slide_black(fr, -df, -dr)
+                                break
+                            if (occ_all >> fr) & 1:
+                                break
 
         return moves + extras
