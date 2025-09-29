@@ -40,6 +40,7 @@ Scope: This file applies to the entire `src/` tree and refines (but does not con
 - Every new engine feature must have unit tests mirroring paths under `tests/`.
 - For move generation/search changes, include or update perft baselines and micro‑bench notes (numbers, hardware, command used) in PR description or adjacent docs.
 - Core behavior must be reproducible: no reliance on unordered dict iteration, random seeds, or platform‑specific UB.
+- Versioning for baselines: bump `project.version` in `pyproject.toml` after each patch/minor/major change. Benchmark baselines are stored as `assets/benchmarks/baseline-<version>.json`; do not overwrite prior versions.
 
 ## Protocol & CLI Isolation
 - `protocol/` (UCI/HTTP) adapts the engine for I/O; it may handle logging, serialization, and environment access. Do not leak I/O concerns back into core modules.

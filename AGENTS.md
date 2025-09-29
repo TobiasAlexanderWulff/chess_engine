@@ -56,6 +56,12 @@ Use the project’s configured toolchain when available; otherwise follow the ab
 - PRs must include: summary, linked issues, test plan, and (if perf-related) before/after metrics.
 - CI must pass: build, format, lint, and tests.
 
+## Versioning & Benchmarks Policy
+
+- Bump the project version in `pyproject.toml` after each patch/minor/major change.
+- Benchmark baselines are versioned: `make bench` writes `assets/benchmarks/baseline-<version>.json`.
+- Do not overwrite prior baselines; bump version before generating new benchmark artifacts.
+
 ## Architecture Notes
 
 - Layers: representation → move gen → search → evaluation → protocol (UCI) → CLI.

@@ -60,6 +60,9 @@ and keep documentation in sync with implementation.
 - When performance is discussed (Plan 6/7), specify the benchmark protocol: positions,
   warm-up, iterations, measurement units, and reporting format. Check in baseline artifacts
   under `assets/benchmarks/` and reference them from the plan.
+ - Versioning requirement: after each patch/minor/major change, bump the project version in
+   `pyproject.toml`. The `make bench` target writes `baseline-<version>.json` to preserve
+   historical baselines.
 
 ## ADRs (Architecture Decision Records)
 - Use `docs/adr/` for decisions with long-term impact (e.g., bitboards vs. mailbox,
@@ -85,4 +88,3 @@ and keep documentation in sync with implementation.
   add a brief Changelog note, and update meta-plan dependencies if sequencing changes.
 - Introducing a new endpoint: Update Plan 1 (API contract), add error schema details, and add
   corresponding tests in Plan 5; reflect changes in OpenAPI.
-

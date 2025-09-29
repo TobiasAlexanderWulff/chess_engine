@@ -42,3 +42,4 @@ Scope: This file applies to the entire `tests/` tree and complements the reposit
 - Deterministic behavior verified; seeds fixed where randomness exists.
 - Perft expectations updated when move generation/search change; numbers and rationale documented in PRs.
 - No unintended I/O or network; uses `tmp_path` when needed.
+ - When updating performance-sensitive code, bump project version in `pyproject.toml` and generate a new versioned benchmark baseline via `make bench` (baseline-<version>.json) to preserve historical comparison.

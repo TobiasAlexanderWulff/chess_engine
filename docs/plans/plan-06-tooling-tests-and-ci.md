@@ -44,6 +44,9 @@ Establish robust developer tooling, tests, and CI to maintain quality.
   into documentation for Plan 7 comparisons.
 - Evaluate type-checking needs (`pyright`/`mypy`) and document decision.
 
+Versioning policy for baselines:
+- After each patch/minor/major change, bump the project version in `pyproject.toml`. The `make bench` target names baseline files using the project version (e.g., `baseline-0.0.2.json`) to preserve historical baselines.
+
 ## Changelog
 - 2025-09-26: Recorded existing tooling/CI state and called out outstanding coverage + benchmark
   deliverables.

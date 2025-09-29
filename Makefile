@@ -2,13 +2,16 @@ PYTHON := python3
 DEPTH ?= 3
 FEN ?=
 
+# Extract project version from pyproject.toml (simple grep/sed)
+PROJECT_VERSION := $(shell grep -E '^version *= *"' pyproject.toml | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+
 # Bench configuration (override via environment/CLI)
 BENCH_POSITIONS ?= assets/benchmarks/positions.json
 BENCH_MOVETIME_MS ?=
 BENCH_DEPTH ?=
 BENCH_HASH_MB ?= 16
 BENCH_ITERATIONS ?= 1
-BENCH_OUT ?= assets/benchmarks/baseline-$(shell date +%Y%m%d).json
+BENCH_OUT ?= assets/benchmarks/baseline-$(PROJECT_VERSION).json
 BENCH_PRETTY ?= 1
 BENCH_PROGRESS ?= 1
 

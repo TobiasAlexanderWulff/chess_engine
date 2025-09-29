@@ -57,11 +57,13 @@ Increase playing strength and performance with classic engine features.
 Use the repo’s benchmark harness to produce reproducible metrics and detect regressions.
 
 - Command:
-  - `make bench` (writes a dated JSON under `assets/benchmarks/`).
+  - `make bench` (writes a versioned JSON under `assets/benchmarks/`, e.g., `baseline-0.0.1.json`).
   - Overrides: `BENCH_MOVETIME_MS`, `BENCH_DEPTH`, `BENCH_HASH_MB`, `BENCH_ITERATIONS`, `BENCH_OUT`.
 - Positions suite lives at `assets/benchmarks/positions.json`; add cases as needed with clear names.
 - Archive baseline artifacts alongside PRs and summarize deltas (nodes/s, average depth at fixed
   time, TT hit rate, fail-high/low, re-searches) in this document.
+
+Versioning requirement: bump the project version in `pyproject.toml` after each patch/minor/major change so new benchmark baselines are created per version instead of overwriting prior results.
 
 ## Changelog
 - 2025-09-26: Updated scope to reflect shipped TT, ordering, aspiration, and telemetry; noted

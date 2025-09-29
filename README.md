@@ -180,7 +180,7 @@ Purpose:
 - Produce JSON artifacts you can compare across commits or branches.
 
 Run via Make:
-- Default run (mixed suite, 16MB hash, 1 iteration/position) writes a dated JSON under `assets/benchmarks/`:
+- Default run (mixed suite, 16MB hash, 1 iteration/position) writes a versioned JSON under `assets/benchmarks/` (e.g., `baseline-0.0.1.json`):
   - `make bench`
 - 1s per position, 64MB TT, two iterations, custom output path:
   - `make bench BENCH_MOVETIME_MS=1000 BENCH_HASH_MB=64 BENCH_ITERATIONS=2 BENCH_OUT=assets/benchmarks/baseline-custom.json`
@@ -197,7 +197,8 @@ Configuration variables (override per invocation):
 - `BENCH_PRETTY` pretty-print JSON (default 1).
 - `BENCH_PROGRESS` print progress to stderr (default 1).
 
-Output:
+Versioning and Output:
+- Bump the project version in `pyproject.toml` after each patch/minor/major change. The benchmark baseline filename uses the project version to avoid overwriting prior baselines (e.g., `baseline-0.0.2.json`).
 - A JSON document containing metadata (timestamp, commit, platform), per-position results (depth, time, nodes, qnodes, nps, score, PV, TT stats), and a summary across the suite.
 - Use these artifacts to compare before/after changes in PRs and to populate Plan 7’s benchmark section.
 
