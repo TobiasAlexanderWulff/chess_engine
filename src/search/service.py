@@ -64,6 +64,7 @@ class SearchService:
         enable_lmr: bool = True,
         enable_futility: bool = True,
         enable_profiling: bool = False,
+        king_see_prune_threshold: Optional[int] = None,
         on_iter: Optional[
             Callable[
                 [
@@ -802,14 +803,19 @@ class SearchService:
             moves_q.sort(key=cap_score, reverse=True)
 
             best_line: List[Move] = []
-            KING_SEE_PRUNE_THRESHOLD = 50  # centipawns
             for m in moves_q:
                 # Small SEE gate: skip obviously losing king captures when not in check
                 if not in_check_now:
                     att = attacker_piece_index(m)
-                    if att in (WK, BK) and see(m) <= -KING_SEE_PRUNE_THRESHOLD:
-                        q_king_cap_see_pruned += 1
-                        continue
+                    if att in (WK, BK):
+                        thr = (
+                            int(king_see_prune_threshold)
+                            if king_see_prune_threshold is not None
+                            else 50
+                        )
+                        if see(m) <= -thr:
+                            q_king_cap_see_pruned += 1
+                            continue
                 board.make_move(m)
                 # repetition accounting
                 child_hash = board.zobrist_hash

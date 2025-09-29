@@ -106,6 +106,7 @@ def bench_position(
     tt_max_entries: Optional[int],
     iterations: int,
     profiling: bool,
+    king_see_thresh: Optional[int],
 ) -> Dict[str, Any]:
     # Resolve effective params (per-item override > global)
     eff_movetime = item.movetime_ms if item.movetime_ms is not None else movetime_ms
@@ -135,6 +136,7 @@ def bench_position(
             movetime_ms=eff_movetime,
             tt_max_entries=tt_max_entries,
             enable_profiling=profiling,
+            king_see_prune_threshold=king_see_thresh,
         )
         total_time += max(0, res.time_ms)
         total_nodes += max(0, res.nodes)
@@ -205,6 +207,12 @@ def main() -> None:
     parser.add_argument(
         "--profiling", action="store_true", help="Enable internal profiling in search"
     )
+    parser.add_argument(
+        "--king-see-thresh",
+        type=int,
+        default=None,
+        help="SEE prune threshold (cp) for king captures in quiescence",
+    )
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
     parser.add_argument(
         "--progress", action="store_true", help="Print per-position progress to stderr"
@@ -238,6 +246,7 @@ def main() -> None:
             tt_max_entries=tt_entries,
             iterations=max(1, args.iterations),
             profiling=bool(args.profiling),
+            king_see_thresh=args.king_see_thresh,
         )
         results.append(res)
         if args.progress:
