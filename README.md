@@ -10,6 +10,7 @@ An API-first chess engine focused on clean separation between the core engine, s
 - [UCI Input Guide](#uci-input-guide)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
+- [Benchmarks](#benchmarks)
 - [Documentation](#documentation)
 - [Community & Contributions](#community--contributions)
 
@@ -170,6 +171,36 @@ tests/        # Mirrors src/ structure for unit and integration tests
 - Run formatting (`make format`) and linting (`make lint`) before committing.
 - Add or update tests alongside any feature changes, targeting ≥ 80% coverage on critical engine modules.
 
+## Benchmarks
+The repository includes a simple, reproducible benchmark harness to track performance and search quality over time.
+
+Purpose:
+- Establish a baseline for Plan 7 (performance & search features) and detect regressions.
+- Measure nodes/s, average reached depth at fixed time, TT utilization (hits/hashfull), fail-high/low rates, and PV stability across a mixed suite of positions.
+- Produce JSON artifacts you can compare across commits or branches.
+
+Run via Make:
+- Default run (mixed suite, 16MB hash, 1 iteration/position) writes a dated JSON under `assets/benchmarks/`:
+  - `make bench`
+- 1s per position, 64MB TT, two iterations, custom output path:
+  - `make bench BENCH_MOVETIME_MS=1000 BENCH_HASH_MB=64 BENCH_ITERATIONS=2 BENCH_OUT=assets/benchmarks/baseline-custom.json`
+- Depth-limited (no movetime):
+  - `make bench BENCH_DEPTH=8 BENCH_MOVETIME_MS=`
+
+Configuration variables (override per invocation):
+- `BENCH_POSITIONS` file with FENs and optional per-position overrides (defaults to `assets/benchmarks/positions.json`).
+- `BENCH_MOVETIME_MS` global movetime per position (omit to use per-position values).
+- `BENCH_DEPTH` global depth cap (omit to allow time-based runs).
+- `BENCH_HASH_MB` approximate transposition table size in MiB (default 16; ~16,384 entries/MiB).
+- `BENCH_ITERATIONS` repeats per position; averages time/nodes/qnodes (default 1).
+- `BENCH_OUT` output JSON path; default is a dated baseline under `assets/benchmarks/`.
+- `BENCH_PRETTY` pretty-print JSON (default 1).
+- `BENCH_PROGRESS` print progress to stderr (default 1).
+
+Output:
+- A JSON document containing metadata (timestamp, commit, platform), per-position results (depth, time, nodes, qnodes, nps, score, PV, TT stats), and a summary across the suite.
+- Use these artifacts to compare before/after changes in PRs and to populate Plan 7’s benchmark section.
+
 ## Documentation
 All planning and design documents are located in `docs/plans/`:
 - `meta-plan.md` – guiding principles and overall roadmap.
@@ -186,4 +217,3 @@ Refer to these documents when implementing new features or planning contribution
 
 ## Community & Contributions
 Contributions are welcome! Please follow the repository coding standards, respect the staged roadmap, and provide clear tests and documentation for any changes. Conventional Commits are preferred (e.g., `feat(search): add aspiration windows`).
-
