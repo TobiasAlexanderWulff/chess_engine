@@ -44,6 +44,31 @@ def _entries_from_hash_mb(mb: int) -> int:
     return mb * 16384
 
 
+def _project_version() -> str:
+    # Prefer reading from pyproject.toml; fall back to importlib.metadata if available
+    pyproj = os.path.join(REPO_ROOT, "pyproject.toml")
+    try:
+        with open(pyproj, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("version") and "=" in line:
+                    # Expect format: version = "X.Y.Z"
+                    try:
+                        val = line.split("=", 1)[1].strip()
+                        if val.startswith('"') and val.endswith('"') and len(val) >= 2:
+                            return val[1:-1]
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    try:
+        from importlib.metadata import version as _dist_version  # type: ignore
+
+        return _dist_version("chess-engine")
+    except Exception:
+        return "unknown"
+
+
 @dataclass
 class BenchItem:
     id: str
@@ -218,7 +243,7 @@ def main() -> None:
             "python": sys.version.split()[0],
             "platform": platform.platform(),
             "git": _git_info(),
-            "engine": {"version": "0.0.1"},
+            "engine": {"version": _project_version()},
             "config": {
                 "positions_file": os.path.relpath(args.positions, REPO_ROOT),
                 "iterations": max(1, args.iterations),
