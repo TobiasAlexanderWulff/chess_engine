@@ -40,6 +40,7 @@ class SearchRequest(BaseModel):
     depth: Optional[int] = Field(default=None, ge=1, le=64)
     movetime_ms: Optional[int] = Field(default=None, ge=1)
     tt_max_entries: Optional[int] = Field(default=None, ge=1)
+    enable_profiling: Optional[bool] = Field(default=False)
 
 
 class GameState(BaseModel):
@@ -149,6 +150,7 @@ def create_app() -> FastAPI:
             depth=req.depth or 1,
             movetime_ms=req.movetime_ms,
             tt_max_entries=req.tt_max_entries,
+            enable_profiling=bool(req.enable_profiling),
         )
         # Score object: either cp or mate (UCI-style)
         score: Dict[str, Any]

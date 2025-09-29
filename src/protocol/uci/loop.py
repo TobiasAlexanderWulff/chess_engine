@@ -45,6 +45,7 @@ class UCIEngine:
         # Engine options
         self.hash_mb: int = 16
         self.multipv: int = 1
+        self.enable_profiling: bool = False
 
     # ---- Command handlers ----
     def cmd_uci(self, write: Writer) -> None:
@@ -53,6 +54,7 @@ class UCIEngine:
         # Options for GUIs
         write("option name Hash type spin default 16 min 1 max 4096")
         write("option name MultiPV type spin default 1 min 1 max 10")
+        write("option name Profiling type check default false")
         write("uciok")
 
     def cmd_isready(self, write: Writer) -> None:
@@ -131,6 +133,9 @@ class UCIEngine:
                 self.multipv = min(10, k)
             except ValueError:
                 pass
+        elif name == "profiling":
+            v = value.strip().lower()
+            self.enable_profiling = v in ("true", "1", "yes", "on")
 
     def cmd_go(self, args: List[str], write: Writer) -> None:
         params = self._parse_go_args(args)
@@ -153,6 +158,7 @@ class UCIEngine:
                     depth=eff_depth,
                     movetime_ms=eff_movetime,
                     tt_max_entries=self._tt_entries_cap(),
+                    enable_profiling=self.enable_profiling,
                     on_iter=self._make_iter_callback(gen, write),
                 )
                 if self._stop_event.is_set() or gen != self._gen:
@@ -202,6 +208,7 @@ class UCIEngine:
                     depth=pre_depth,
                     movetime_ms=pre_slice,
                     tt_max_entries=self._tt_entries_cap(),
+                    enable_profiling=self.enable_profiling,
                     on_iter=None,
                 )
                 try:
@@ -324,6 +331,7 @@ class UCIEngine:
                     depth=max(1, eff_depth - 1),
                     movetime_ms=(per_time[idx_sel] if main_budget is not None else None),
                     tt_max_entries=self._tt_entries_cap(),
+                    enable_profiling=self.enable_profiling,
                     on_iter=None,
                 )
                 try:

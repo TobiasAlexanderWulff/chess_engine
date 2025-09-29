@@ -96,8 +96,9 @@ Next measurement step:
 
 ## Benchmark Results (v0.0.3)
 
-Context: Implemented capture-only quiescence (uses `generate_evasions()` when in check and
-`generate_captures()` otherwise). Re-benchmarked with a stable time budget.
+Context: Implemented capture-only quiescence (fast `generate_captures`, `generate_evasions_fast`) and
+added a small SEE gate to skip obviously losing king captures during quiescence when not in check.
+Re-benchmarked with a stable time budget.
 
 - Artifacts: `assets/benchmarks/baseline-0.0.3.json` (2s/position, 3 iterations).
 - Command: `make bench BENCH_MOVETIME_MS=2000 BENCH_ITERATIONS=3`
