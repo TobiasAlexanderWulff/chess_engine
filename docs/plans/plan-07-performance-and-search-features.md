@@ -53,6 +53,16 @@ Increase playing strength and performance with classic engine features.
 - Evaluate remaining enhancements (e.g., late-move reductions tuning, singular extensions) and
   decide on scope.
 
+## Benchmark Protocol
+Use the repo’s benchmark harness to produce reproducible metrics and detect regressions.
+
+- Command:
+  - `make bench` (writes a dated JSON under `assets/benchmarks/`).
+  - Overrides: `BENCH_MOVETIME_MS`, `BENCH_DEPTH`, `BENCH_HASH_MB`, `BENCH_ITERATIONS`, `BENCH_OUT`.
+- Positions suite lives at `assets/benchmarks/positions.json`; add cases as needed with clear names.
+- Archive baseline artifacts alongside PRs and summarize deltas (nodes/s, average depth at fixed
+  time, TT hit rate, fail-high/low, re-searches) in this document.
+
 ## Changelog
 - 2025-09-26: Updated scope to reflect shipped TT, ordering, aspiration, and telemetry; noted
   outstanding benchmarking/tuning work.
