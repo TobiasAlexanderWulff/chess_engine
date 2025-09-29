@@ -67,7 +67,7 @@ with a descriptive `detail` message.
 | POST | `/api/games/{game_id}/position` | Replaces the game state with a provided FEN position. | `{ "fen": str }` | Updated `GameState`. |
 | POST | `/api/games/{game_id}/move` | Applies a UCI move string to the game. | `{ "move": str }` | Updated `GameState`. |
 | POST | `/api/games/{game_id}/undo` | Reverts the most recent move in the session. | _None_ | Updated `GameState`. |
-| POST | `/api/games/{game_id}/search` | Runs a search from the current position. | `{ "depth"?: int, "movetime_ms"?: int, "tt_max_entries"?: int }` | Search statistics, principal variation, and best move. |
+| POST | `/api/games/{game_id}/search` | Runs a search from the current position. | `{ "depth"?: int, "movetime_ms"?: int, "tt_max_entries"?: int, "enable_profiling"?: bool }` | Search statistics, principal variation, and best move. |
 | POST | `/api/perft` | Executes a perft calculation for the supplied FEN at a depth. | `{ "fen": str, "depth"?: int }` | `{ "nodes": int }` |
 
 `GameState` responses contain:
@@ -78,6 +78,12 @@ with a descriptive `detail` message.
 - `in_check`, `checkmate`, `stalemate`, `draw`: Status flags for the side to move.
 - `last_move`: The most recent move in UCI format, if any.
 - `move_history`: Chronological list of moves applied to the game.
+
+### Profiling (HTTP)
+- Request: set `enable_profiling: true` in `/api/games/{game_id}/search` to collect basic internal timing.
+- Response includes two additional fields when enabled:
+  - `gen_time_main_ms`: time spent generating legal moves at main (non-quiescence) nodes (accumulated milliseconds).
+  - `gen_time_q_ms`: time spent generating captures/evasions inside quiescence (accumulated milliseconds).
 
 ## UCI Input Guide
 
@@ -101,7 +107,10 @@ Use `setoption` commands to configure the engine. For example, to limit the sear
 setoption name Depth value 10
 ```
 
-Available option names depend on the current build; the engine will list them in response to the `uci` command.
+Available option names depend on the current build; the engine will list them in response to the `uci` command. Notable options:
+- `Hash` (spin): approximate transposition table size in MiB.
+- `MultiPV` (spin): number of principal variations to report.
+- `Profiling` (check): when `true`, enables lightweight internal timing of move generation; intended for diagnostics. It does not change `info` output fields, only internal stats used by the HTTP interface or future diagnostics.
 
 ### 3. Initialize a New Game
 
