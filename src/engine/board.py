@@ -1230,35 +1230,334 @@ class Board:
 
     # --- Specialized generators for search ---
     def generate_captures(self) -> List[Move]:
-        """Return legal capture moves only (including en passant and promo-captures)."""
-        legal = self.generate_legal_moves()
-        if not legal:
-            return []
+        """Return legal capture moves using pseudo-legal generation + legality check.
 
-        # Opponent occupancy for direct capture detection
+        Includes:
+        - Pawn captures (with promotions) and en passant
+        - Knight captures
+        - Bishop/rook/queen sliding captures (first blocker only)
+        - King captures (later filtered for legality)
+        """
+        PROMOS = ("q", "r", "b", "n")
+        moves: List[Move] = []
+
+        # Opponent occupancy and all occupancy
+        occ_all = 0
+        for bb in self.bb:
+            occ_all |= bb
         if self.side_to_move == "w":
             occ_opp = (
                 self.bb[BP] | self.bb[BN] | self.bb[BB] | self.bb[BR] | self.bb[BQ] | self.bb[BK]
             )
+            pawns = self.bb[WP]
+            while pawns:
+                lsb = pawns & -pawns
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                # Diagonal captures
+                if f > 0:
+                    to_sq = from_sq + 7
+                    if to_sq <= 63 and ((occ_opp >> to_sq) & 1):
+                        if (to_sq // 8) == 7:
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, to_sq, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, to_sq))
+                if f < 7:
+                    to_sq = from_sq + 9
+                    if to_sq <= 63 and ((occ_opp >> to_sq) & 1):
+                        if (to_sq // 8) == 7:
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, to_sq, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, to_sq))
+                # En passant
+                if self.ep_square is not None:
+                    if f > 0 and from_sq + 7 == self.ep_square:
+                        moves.append(Move(from_sq, self.ep_square))
+                    if f < 7 and from_sq + 9 == self.ep_square:
+                        moves.append(Move(from_sq, self.ep_square))
+                pawns ^= lsb
+            # Knights
+            kn = self.bb[WN]
+            while kn:
+                lsb = kn & -kn
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, 2),
+                    (1, 2),
+                    (-2, 1),
+                    (2, 1),
+                    (-2, -1),
+                    (2, -1),
+                    (-1, -2),
+                    (1, -2),
+                ):
+                    tf, tr = f + df, r + dr
+                    if 0 <= tf < 8 and 0 <= tr < 8:
+                        to_sq = tr * 8 + tf
+                        if (occ_opp >> to_sq) & 1:
+                            moves.append(Move(from_sq, to_sq))
+                kn ^= lsb
+            # Bishops
+            bbp = self.bb[WB]
+            while bbp:
+                lsb = bbp & -bbp
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_all >> to_sq) & 1:
+                            if (occ_opp >> to_sq) & 1:
+                                moves.append(Move(from_sq, to_sq))
+                            break
+                bbp ^= lsb
+            # Rooks
+            rr = self.bb[WR]
+            while rr:
+                lsb = rr & -rr
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_all >> to_sq) & 1:
+                            if (occ_opp >> to_sq) & 1:
+                                moves.append(Move(from_sq, to_sq))
+                            break
+                rr ^= lsb
+            # Queens
+            qq = self.bb[WQ]
+            while qq:
+                lsb = qq & -qq
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, -1),
+                    (1, -1),
+                    (-1, 1),
+                    (1, 1),
+                    (-1, 0),
+                    (1, 0),
+                    (0, -1),
+                    (0, 1),
+                ):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_all >> to_sq) & 1:
+                            if (occ_opp >> to_sq) & 1:
+                                moves.append(Move(from_sq, to_sq))
+                            break
+                qq ^= lsb
+            # King captures (filtered later for legality)
+            kk = self.bb[WK]
+            if kk:
+                from_sq = (kk & -kk).bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, -1),
+                    (0, -1),
+                    (1, -1),
+                    (-1, 0),
+                    (1, 0),
+                    (-1, 1),
+                    (0, 1),
+                    (1, 1),
+                ):
+                    tf, tr = f + df, r + dr
+                    if 0 <= tf < 8 and 0 <= tr < 8:
+                        to_sq = tr * 8 + tf
+                        if (occ_opp >> to_sq) & 1:
+                            moves.append(Move(from_sq, to_sq))
         else:
             occ_opp = (
                 self.bb[WP] | self.bb[WN] | self.bb[WB] | self.bb[WR] | self.bb[WQ] | self.bb[WK]
             )
+            pawns = self.bb[BP]
+            while pawns:
+                lsb = pawns & -pawns
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                if f < 7:
+                    to_sq = from_sq - 7
+                    if to_sq >= 0 and ((occ_opp >> to_sq) & 1):
+                        if (to_sq // 8) == 0:
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, to_sq, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, to_sq))
+                if f > 0:
+                    to_sq = from_sq - 9
+                    if to_sq >= 0 and ((occ_opp >> to_sq) & 1):
+                        if (to_sq // 8) == 0:
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, to_sq, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, to_sq))
+                # En passant
+                if self.ep_square is not None:
+                    if f < 7 and from_sq - 7 == self.ep_square:
+                        moves.append(Move(from_sq, self.ep_square))
+                    if f > 0 and from_sq - 9 == self.ep_square:
+                        moves.append(Move(from_sq, self.ep_square))
+                pawns ^= lsb
+            # Knights
+            kn = self.bb[BN]
+            while kn:
+                lsb = kn & -kn
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, 2),
+                    (1, 2),
+                    (-2, 1),
+                    (2, 1),
+                    (-2, -1),
+                    (2, -1),
+                    (-1, -2),
+                    (1, -2),
+                ):
+                    tf, tr = f + df, r + dr
+                    if 0 <= tf < 8 and 0 <= tr < 8:
+                        to_sq = tr * 8 + tf
+                        if (occ_opp >> to_sq) & 1:
+                            moves.append(Move(from_sq, to_sq))
+                kn ^= lsb
+            # Bishops
+            bbp = self.bb[BB]
+            while bbp:
+                lsb = bbp & -bbp
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_all >> to_sq) & 1:
+                            if (occ_opp >> to_sq) & 1:
+                                moves.append(Move(from_sq, to_sq))
+                            break
+                bbp ^= lsb
+            # Rooks
+            rr = self.bb[BR]
+            while rr:
+                lsb = rr & -rr
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_all >> to_sq) & 1:
+                            if (occ_opp >> to_sq) & 1:
+                                moves.append(Move(from_sq, to_sq))
+                            break
+                rr ^= lsb
+            # Queens
+            qq = self.bb[BQ]
+            while qq:
+                lsb = qq & -qq
+                from_sq = lsb.bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, -1),
+                    (1, -1),
+                    (-1, 1),
+                    (1, 1),
+                    (-1, 0),
+                    (1, 0),
+                    (0, -1),
+                    (0, 1),
+                ):
+                    tf, tr = f, r
+                    while True:
+                        tf += df
+                        tr += dr
+                        if not (0 <= tf < 8 and 0 <= tr < 8):
+                            break
+                        to_sq = tr * 8 + tf
+                        if (occ_all >> to_sq) & 1:
+                            if (occ_opp >> to_sq) & 1:
+                                moves.append(Move(from_sq, to_sq))
+                            break
+                qq ^= lsb
+            # King
+            kk = self.bb[BK]
+            if kk:
+                from_sq = (kk & -kk).bit_length() - 1
+                f = from_sq % 8
+                r = from_sq // 8
+                for df, dr in (
+                    (-1, -1),
+                    (0, -1),
+                    (1, -1),
+                    (-1, 0),
+                    (1, 0),
+                    (-1, 1),
+                    (0, 1),
+                    (1, 1),
+                ):
+                    tf, tr = f + df, r + dr
+                    if 0 <= tf < 8 and 0 <= tr < 8:
+                        to_sq = tr * 8 + tf
+                        if (occ_opp >> to_sq) & 1:
+                            moves.append(Move(from_sq, to_sq))
 
-        captures: List[Move] = []
-        for m in legal:
-            is_ep = False
-            if self.ep_square is not None and m.to_sq == self.ep_square:
-                if self.side_to_move == "w" and ((m.to_sq - m.from_sq) in (7, 9)):
-                    # white pawn capturing en passant
-                    if (self.bb[WP] >> m.from_sq) & 1:
-                        is_ep = True
-                elif self.side_to_move == "b" and ((m.from_sq - m.to_sq) in (7, 9)):
-                    if (self.bb[BP] >> m.from_sq) & 1:
-                        is_ep = True
-            if ((occ_opp >> m.to_sq) & 1) or is_ep:
-                captures.append(m)
-        return captures
+        # Legality filter: ensure our king is not left in check
+        legal_caps: List[Move] = []
+        for mv in moves:
+            new_bb = self._apply_pseudo_to_bb(mv)
+            if new_bb is None:
+                continue
+            if self.side_to_move == "w":
+                kbb = new_bb[WK]
+                if kbb == 0:
+                    continue
+                ksq = (kbb & -kbb).bit_length() - 1
+                if not self._is_attacked(ksq, by_white=False, bb=new_bb):
+                    legal_caps.append(mv)
+            else:
+                kbb = new_bb[BK]
+                if kbb == 0:
+                    continue
+                ksq = (kbb & -kbb).bit_length() - 1
+                if not self._is_attacked(ksq, by_white=True, bb=new_bb):
+                    legal_caps.append(mv)
+        return legal_caps
 
     def generate_evasions(self) -> List[Move]:
         """Return legal moves when in check (i.e., check evasions). Empty if not in check."""
