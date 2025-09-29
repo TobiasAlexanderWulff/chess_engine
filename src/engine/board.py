@@ -244,6 +244,61 @@ class Board:
             self.bb[BP] | self.bb[BN] | self.bb[BB] | self.bb[BR] | self.bb[BQ] | self.bb[BK]
         )
 
+        # Pinned-piece prefilter for side to move to reduce illegal candidates early
+        def _colinear_with_king(fr: int, to: int, ks: int) -> bool:
+            if ks < 0:
+                return True
+            fx, fy = fr % 8, fr // 8
+            tx, ty = to % 8, to // 8
+            kx, ky = ks % 8, ks // 8
+            return (fx - kx) * (ty - ky) == (fy - ky) * (tx - kx)
+
+        def _compute_pins_for_side(stm_white: bool) -> tuple[set[int], int]:
+            # King square
+            kbb = self.bb[WK] if stm_white else self.bb[BK]
+            if kbb == 0:
+                return set(), -1
+            ks = (kbb & -kbb).bit_length() - 1
+            own_occ = occ_white if stm_white else occ_black
+            opp_bish = self.bb[BB] if stm_white else self.bb[WB]
+            opp_rook = self.bb[BR] if stm_white else self.bb[WR]
+            opp_queen = self.bb[BQ] if stm_white else self.bb[WQ]
+            pins: set[int] = set()
+            # Rays: diagonals and orthogonals
+            for df, dr, diag in (
+                (-1, -1, True),
+                (1, -1, True),
+                (-1, 1, True),
+                (1, 1, True),
+                (-1, 0, False),
+                (1, 0, False),
+                (0, -1, False),
+                (0, 1, False),
+            ):
+                tf, tr = ks % 8, ks // 8
+                seen_own: int | None = None
+                while True:
+                    tf += df
+                    tr += dr
+                    if not (0 <= tf < 8 and 0 <= tr < 8):
+                        break
+                    sq = tr * 8 + tf
+                    if (occ_all >> sq) & 1:
+                        if seen_own is None and ((own_occ >> sq) & 1):
+                            seen_own = sq
+                            continue
+                        if seen_own is not None:
+                            if diag:
+                                if ((opp_bish | opp_queen) >> sq) & 1:
+                                    pins.add(seen_own)
+                            else:
+                                if ((opp_rook | opp_queen) >> sq) & 1:
+                                    pins.add(seen_own)
+                        break
+            return pins, ks
+
+        pinned_stm, ks_stm = _compute_pins_for_side(self.side_to_move == "w")
+
         if self.side_to_move == "w":
             pawns = self.bb[WP]
             while pawns:
@@ -255,43 +310,58 @@ class Board:
                 # Single push (handle promotions from rank 7 → 8)
                 to_sq = from_sq + 8
                 if to_sq <= 63 and not ((occ_all >> to_sq) & 1):
-                    if rank_idx == 6:  # promotion
-                        for promo in PROMOS:
-                            moves.append(Move(from_sq, to_sq, promotion=promo))
+                    if from_sq in pinned_stm and not _colinear_with_king(from_sq, to_sq, ks_stm):
+                        pass
                     else:
-                        moves.append(Move(from_sq, to_sq))
-                        # Double push from rank 2 (rank_idx == 1)
-                        if rank_idx == 1:
-                            to2 = from_sq + 16
-                            if not ((occ_all >> to2) & 1):
-                                moves.append(Move(from_sq, to2))
+                        if rank_idx == 6:  # promotion
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, to_sq, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, to_sq))
+                            # Double push from rank 2 (rank_idx == 1)
+                            if rank_idx == 1:
+                                to2 = from_sq + 16
+                                if not ((occ_all >> to2) & 1):
+                                    if from_sq not in pinned_stm or _colinear_with_king(
+                                        from_sq, to2, ks_stm
+                                    ):
+                                        moves.append(Move(from_sq, to2))
 
                 # Captures
                 # Left capture (from White's perspective): +7 if not on file a
                 if file_idx > 0:
                     cap = from_sq + 7
                     if cap <= 63 and ((occ_black >> cap) & 1):
-                        if (cap // 8) == 7:
-                            for promo in PROMOS:
-                                moves.append(Move(from_sq, cap, promotion=promo))
+                        if from_sq in pinned_stm and not _colinear_with_king(from_sq, cap, ks_stm):
+                            pass
                         else:
-                            moves.append(Move(from_sq, cap))
+                            if (cap // 8) == 7:
+                                for promo in PROMOS:
+                                    moves.append(Move(from_sq, cap, promotion=promo))
+                            else:
+                                moves.append(Move(from_sq, cap))
                 # Right capture: +9 if not on file h
                 if file_idx < 7:
                     cap = from_sq + 9
                     if cap <= 63 and ((occ_black >> cap) & 1):
-                        if (cap // 8) == 7:
-                            for promo in PROMOS:
-                                moves.append(Move(from_sq, cap, promotion=promo))
+                        if from_sq in pinned_stm and not _colinear_with_king(from_sq, cap, ks_stm):
+                            pass
                         else:
-                            moves.append(Move(from_sq, cap))
+                            if (cap // 8) == 7:
+                                for promo in PROMOS:
+                                    moves.append(Move(from_sq, cap, promotion=promo))
+                            else:
+                                moves.append(Move(from_sq, cap))
 
                 pawns ^= lsb
-            # Knights (no legality filtering yet)
+            # Knights (skip when pinned)
             knights = self.bb[WN]
             while knights:
                 lsb = knights & -knights
                 from_sq = lsb.bit_length() - 1
+                if from_sq in pinned_stm:
+                    knights ^= lsb
+                    continue
                 f = from_sq % 8
                 r = from_sq // 8
                 for df, dr in (
@@ -454,43 +524,58 @@ class Board:
                 # Single push (handle promotions from rank 2 → 1)
                 to_sq = from_sq - 8
                 if to_sq >= 0 and not ((occ_all >> to_sq) & 1):
-                    if rank_idx == 1:  # promotion
-                        for promo in PROMOS:
-                            moves.append(Move(from_sq, to_sq, promotion=promo))
+                    if from_sq in pinned_stm and not _colinear_with_king(from_sq, to_sq, ks_stm):
+                        pass
                     else:
-                        moves.append(Move(from_sq, to_sq))
-                        # Double push from rank 7 (rank_idx == 6)
-                        if rank_idx == 6:
-                            to2 = from_sq - 16
-                            if not ((occ_all >> to2) & 1):
-                                moves.append(Move(from_sq, to2))
+                        if rank_idx == 1:  # promotion
+                            for promo in PROMOS:
+                                moves.append(Move(from_sq, to_sq, promotion=promo))
+                        else:
+                            moves.append(Move(from_sq, to_sq))
+                            # Double push from rank 7 (rank_idx == 6)
+                            if rank_idx == 6:
+                                to2 = from_sq - 16
+                                if not ((occ_all >> to2) & 1):
+                                    if from_sq not in pinned_stm or _colinear_with_king(
+                                        from_sq, to2, ks_stm
+                                    ):
+                                        moves.append(Move(from_sq, to2))
 
                 # Captures
                 # Left capture from Black's perspective: -9 if not on file a
                 if file_idx > 0:
                     cap = from_sq - 9
                     if cap >= 0 and ((occ_white >> cap) & 1):
-                        if (cap // 8) == 0:
-                            for promo in PROMOS:
-                                moves.append(Move(from_sq, cap, promotion=promo))
+                        if from_sq in pinned_stm and not _colinear_with_king(from_sq, cap, ks_stm):
+                            pass
                         else:
-                            moves.append(Move(from_sq, cap))
+                            if (cap // 8) == 0:
+                                for promo in PROMOS:
+                                    moves.append(Move(from_sq, cap, promotion=promo))
+                            else:
+                                moves.append(Move(from_sq, cap))
                 # Right capture: -7 if not on file h
                 if file_idx < 7:
                     cap = from_sq - 7
                     if cap >= 0 and ((occ_white >> cap) & 1):
-                        if (cap // 8) == 0:
-                            for promo in PROMOS:
-                                moves.append(Move(from_sq, cap, promotion=promo))
+                        if from_sq in pinned_stm and not _colinear_with_king(from_sq, cap, ks_stm):
+                            pass
                         else:
-                            moves.append(Move(from_sq, cap))
+                            if (cap // 8) == 0:
+                                for promo in PROMOS:
+                                    moves.append(Move(from_sq, cap, promotion=promo))
+                            else:
+                                moves.append(Move(from_sq, cap))
 
                 pawns ^= lsb
-            # Knights (no legality filtering yet)
+            # Knights (skip when pinned)
             knights = self.bb[BN]
             while knights:
                 lsb = knights & -knights
                 from_sq = lsb.bit_length() - 1
+                if from_sq in pinned_stm:
+                    knights ^= lsb
+                    continue
                 f = from_sq % 8
                 r = from_sq // 8
                 for df, dr in (
