@@ -202,6 +202,10 @@ Versioning and Output:
 - A JSON document containing metadata (timestamp, commit, platform), per-position results (depth, time, nodes, qnodes, nps, score, PV, TT stats), and a summary across the suite.
 - Use these artifacts to compare before/after changes in PRs and to populate Plan 7’s benchmark section.
 
+Comparing baselines:
+- Use the diff helper to compare two baselines and get per-position and overall deltas:
+  - `python3 scripts/bench_diff.py --old assets/benchmarks/baseline-0.0.1.json --new assets/benchmarks/baseline-0.0.2.json`
+
 ## Documentation
 All planning and design documents are located in `docs/plans/`:
 - `meta-plan.md` – guiding principles and overall roadmap.

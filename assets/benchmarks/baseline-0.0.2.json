@@ -1,11 +1,11 @@
 {
   "meta": {
-    "timestamp": "2025-09-29T11:59:51Z",
+    "timestamp": "2025-09-29T12:22:02Z",
     "python": "3.11.9",
     "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
     "git": {
-      "commit": "a0bb99d10a54fba65c098b266eebecdf62f73ce1",
-      "describe": "a0bb99d-dirty"
+      "commit": "fcb763ee3d840ca40d8f05ac33c7b7c387bb43bd",
+      "describe": "fcb763e-dirty"
     },
     "engine": {
       "version": "0.0.1"
@@ -13,7 +13,7 @@
     "config": {
       "positions_file": "assets/benchmarks/positions.json",
       "iterations": 1,
-      "global_movetime_ms": null,
+      "global_movetime_ms": 1000,
       "global_depth": null,
       "hash_mb": 16,
       "tt_max_entries": 262144
@@ -71,10 +71,10 @@
       "pv": [
         "d2d3"
       ],
-      "time_ms": 26,
+      "time_ms": 28,
       "nodes": 121,
       "qnodes": 87,
-      "nps": 4653,
+      "nps": 4321,
       "seldepth": 8,
       "tt_hits": 0,
       "tt_probes": 1,
@@ -88,7 +88,7 @@
       "iters": [
         {
           "depth": 1,
-          "time_ms": 26,
+          "time_ms": 28,
           "nodes": 121,
           "qnodes": 87,
           "fail_high": 0,
@@ -148,10 +148,10 @@
         "d4c5",
         "e7c5"
       ],
-      "time_ms": 6,
+      "time_ms": 5,
       "nodes": 21,
       "qnodes": 19,
-      "nps": 3500,
+      "nps": 4200,
       "seldepth": 9,
       "tt_hits": 0,
       "tt_probes": 1,
@@ -253,9 +253,9 @@
   ],
   "summary": {
     "positions": 6,
-    "total_time_ms": 46,
+    "total_time_ms": 47,
     "total_nodes": 216,
     "total_qnodes": 142,
-    "overall_nps": 4695
+    "overall_nps": 4595
   }
 }
