@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -18,6 +19,7 @@ from ...engine.move import parse_uci
 from ...search.service import SearchService
 from ...engine.perft import perft as perft_nodes
 from .session import InMemorySessionStore
+from ...assets.book import open_book
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,8 @@ class SearchRequest(BaseModel):
     movetime_ms: Optional[int] = Field(default=None, ge=1)
     tt_max_entries: Optional[int] = Field(default=None, ge=1)
     enable_profiling: Optional[bool] = Field(default=False)
+    use_book: Optional[bool] = Field(default=True)
+    book_random: Optional[bool] = Field(default=False)
 
 
 class GameState(BaseModel):
@@ -70,6 +74,12 @@ def create_app() -> FastAPI:
 
     # In-memory session store for games
     store = InMemorySessionStore()
+    # Optional opening book configured via env var BOOK_FILE (JSON format)
+    book_path = os.environ.get("BOOK_FILE")
+    try:
+        book = open_book(book_path) if book_path else None
+    except Exception:
+        book = None
 
     @app.get("/healthz")
     async def healthz() -> Dict[str, str]:
@@ -144,6 +154,42 @@ def create_app() -> FastAPI:
     @app.post("/api/games/{game_id}/search")
     async def search(game_id: str, req: SearchRequest) -> Dict[str, Any]:
         game = _require_game(store, game_id)
+        # Opening book probe (if configured)
+        if "book" in locals() and book is not None and (req.use_book is None or req.use_book):
+            mv = book.find_move(game, randomize=bool(req.book_random))
+            if mv is not None:
+                u = mv.to_uci()
+                return {
+                    "best_move": u,
+                    "score": {"cp": 0},
+                    "pv": [u],
+                    "nodes": 0,
+                    "qnodes": 0,
+                    "seldepth": 0,
+                    "tt_hits": 0,
+                    "tt_exact_hits": 0,
+                    "tt_lower_hits": 0,
+                    "tt_upper_hits": 0,
+                    "fail_high": 0,
+                    "fail_low": 0,
+                    "tt_probes": 0,
+                    "re_searches": 0,
+                    "iters": [],
+                    "tt_stores": 0,
+                    "tt_replacements": 0,
+                    "tt_size": 0,
+                    "depth": 0,
+                    "time_ms": 0,
+                    "hashfull": 0,
+                    "gen_time_main_us": 0,
+                    "gen_time_q_us": 0,
+                    "gen_time_main_ms": 0,
+                    "gen_time_q_ms": 0,
+                    "q_cap_candidates": 0,
+                    "q_king_cap_candidates": 0,
+                    "q_king_cap_see_pruned": 0,
+                    "q_evasions_generated": 0,
+                }
         service = SearchService()
         res = service.search(
             game,

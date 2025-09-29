@@ -8,6 +8,7 @@ from typing import Callable, List, Optional
 from ...engine.game import Game
 from ...engine.move import Move, parse_uci
 from ...search.service import SearchService, SearchResult
+from ...assets.book import open_book
 
 
 Writer = Callable[[str], None]
@@ -46,6 +47,11 @@ class UCIEngine:
         self.hash_mb: int = 16
         self.multipv: int = 1
         self.enable_profiling: bool = False
+        # Opening book options
+        self.own_book: bool = True
+        self.book_random: bool = False
+        self.book_path: Optional[str] = None
+        self._book = None
 
     # ---- Command handlers ----
     def cmd_uci(self, write: Writer) -> None:
@@ -55,6 +61,9 @@ class UCIEngine:
         write("option name Hash type spin default 16 min 1 max 4096")
         write("option name MultiPV type spin default 1 min 1 max 10")
         write("option name Profiling type check default false")
+        write("option name OwnBook type check default true")
+        write("option name BookRandom type check default false")
+        write('option name BookFile type string default ""')
         write("uciok")
 
     def cmd_isready(self, write: Writer) -> None:
@@ -136,6 +145,19 @@ class UCIEngine:
         elif name == "profiling":
             v = value.strip().lower()
             self.enable_profiling = v in ("true", "1", "yes", "on")
+        elif name == "ownbook":
+            v = value.strip().lower()
+            self.own_book = v in ("true", "1", "yes", "on")
+        elif name == "bookrandom":
+            v = value.strip().lower()
+            self.book_random = v in ("true", "1", "yes", "on")
+        elif name == "bookfile":
+            path = value.strip()
+            self.book_path = path if path else None
+            try:
+                self._book = open_book(self.book_path) if self.book_path else None
+            except Exception:
+                self._book = None
 
     def cmd_go(self, args: List[str], write: Writer) -> None:
         params = self._parse_go_args(args)
@@ -152,6 +174,16 @@ class UCIEngine:
 
         def worker() -> None:
             if self.multipv <= 1:
+                # Opening book at root (single-PV path)
+                if self.own_book and self._book is not None:
+                    mv = self._book.find_move(self.game, randomize=self.book_random)
+                    if mv is not None:
+                        best = mv.to_uci()
+                        write(f"bestmove {best}")
+                        self._search_running = False
+                        with self._result_lock:
+                            self._last_result = None
+                        return
                 # Run search (blocking) and publish result if still current
                 res = self.search.search(
                     self.game,
