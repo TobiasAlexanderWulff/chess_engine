@@ -87,6 +87,8 @@ def bench_position(
     # If neither provided, default to 1000ms
     if eff_movetime is None and eff_depth is None:
         eff_movetime = 1000
+    # Depth selection: if time is provided and no explicit depth, allow deep cap to let time govern
+    depth_arg = eff_depth if eff_depth is not None else (64 if eff_movetime is not None else 1)
 
     # Prepare game
     try:
@@ -103,7 +105,7 @@ def bench_position(
     for _ in range(max(1, iterations)):
         res = svc.search(
             game,
-            depth=eff_depth or 1,
+            depth=depth_arg,
             movetime_ms=eff_movetime,
             tt_max_entries=tt_max_entries,
         )

@@ -94,6 +94,37 @@ Next measurement step:
 - Implement capture-only qsearch (with `generate_captures()` and `generate_evasions()`), then
   re-run the same suite and update this section with new deltas.
 
+## Benchmark Results (v0.0.3)
+
+Context: Implemented capture-only quiescence (uses `generate_evasions()` when in check and
+`generate_captures()` otherwise). Re-benchmarked with a stable time budget.
+
+- Artifacts: `assets/benchmarks/baseline-0.0.3.json` (2s/position, 3 iterations).
+- Command: `make bench BENCH_MOVETIME_MS=2000 BENCH_ITERATIONS=3`
+- Note: Baseline v0.0.2 used a much shorter effective budget; direct NPS comparison is not
+  apples-to-apples. Treat the following as descriptive only.
+
+Overall summary (v0.0.2 → v0.0.3):
+- nodes: 216 → 10,238 (+4,640%)
+- time_ms: 43 → 2,532 (+5,788%)
+- nps: 5,023 → 4,043 (−19.5%)
+
+Per-position (examples):
+- startpos: depth 1 → 4, nps 8,166 → 4,439
+- open_midgame: depth 1 → 3, nps 4,321 → 2,707
+- closed_midgame: depth 1 → 4, nps 4,333 → 3,426
+
+Interpretation:
+- With a larger budget, search reaches depth 3–4; per-position NPS shifts reflect different
+  node mix and quiescence breadth, not necessarily regressions. For a fair comparison of
+  capture-only qsearch, generate a v0.0.2 baseline under the same budget and diff v0.0.2
+  long-run vs v0.0.3.
+
+Next steps:
+- Create a v0.0.2 long-run baseline (same 2s/position, 3 iters) from the previous commit and
+  include a direct diff here. If results are favorable, proceed to optimize capture-only
+  generation to avoid calling full legal gen internally.
+
 ## Changelog
 - 2025-09-26: Updated scope to reflect shipped TT, ordering, aspiration, and telemetry; noted
   outstanding benchmarking/tuning work.
