@@ -1,159 +1,143 @@
 # Chess Web GUI Vision
 
 ## Purpose
-- Provide a north star for the standalone `chess_web_gui` repository that will
-  consume this engine's HTTP API.
-- Align product, design, and engineering teams on user goals, experience
-  pillars, and technical integration constraints.
-- Document assumptions about future enhancements so the frontend can evolve in
-  lockstep with the engine roadmap.
+The `chess_web_gui` repository hosts a standalone web client that can run in any
+browser, connect to remote chess engines over HTTP, or drive local engines via
+UCI. This document captures the minimum product and technical direction required
+to ship a dependable first release without assuming knowledge of the engine
+codebase.
 
-## Audience
-- Product managers defining the scope of the first public release.
-- UX and visual designers shaping information hierarchy and interaction
-  patterns.
-- Frontend engineers implementing the SPA and integration tests.
-- Developer advocates maintaining documentation and onboarding flows for
-  contributors.
+## Product Goals
+- Provide a clean board experience that supports three match types: Human vs
+  Human, Human vs Engine, and Engine vs Engine.
+- Allow players to choose between connecting to a hosted HTTP engine or loading
+  a local UCI executable, with a consistent UX for both connectors.
+- Surface the engine’s analysis (scores, principal variation, telemetry) in a
+  way that is understandable for casual players yet powerful for advanced users.
+- Keep the architecture modular so future features (puzzles, training modes,
+  accounts) can be layered without rewriting the core game loop.
 
-## Vision Statement
-Deliver a fast, insightful, and trustable chess experience that showcases the
-engine's analytical strengths while remaining approachable to casual players.
-The application should feel responsive on consumer hardware, embrace modern web
-accessibility standards, and provide progressive disclosure of advanced engine
-telemetry.
+## Core Experience
+1. **Board & Move Entry** – responsive board with drag, tap, or keyboard move
+   entry, legal move highlights, and history.
+2. **Match Controller** – orchestrates the selected matchup:
+   - Human vs Human: local turn-taking with optional clocks.
+   - Human vs Engine: pushes player moves to the selected engine connector and
+     plays engine replies automatically.
+   - Engine vs Engine: alternates two connectors (any mix of HTTP and UCI) while
+     streaming evaluations.
+3. **Analysis Panel** – displays engine scores, PV, depth, nodes, and time for
+   whichever engine is active.
+4. **Session Persistence** – local storage (e.g., IndexedDB) retains the latest
+   session configuration and last `game_id` when using the HTTP API.
 
-## Target Personas
-1. **Learner** – casual player exploring openings and tactics, values clarity,
-   explanations, and guardrails against mistakes.
-2. **Competitor** – club-level player preparing for matches, cares about
-   accuracy, move quality, and deep analysis controls.
-3. **Enthusiast** – engine aficionado interested in raw telemetry, configurable
-   search parameters, and experimentation with different positions.
+## System Overview
+- **UI Layer** – component library (React/Vue/Svelte) implementing board,
+  controls, telemetry panels, and dialogs.
+- **State Store** – centralized state (Redux Toolkit, Zustand, Pinia, etc.) to
+  track board state, clocks, connectors, pending analysis, and configuration.
+- **Engine Connectors** – interchangeable adapters:
+  - `ApiEngineConnector` handles HTTP requests against the hosted engine.
+  - `UciEngineConnector` manages a spawned UCI process via WebAssembly/bridge or
+    desktop host (Electron/Tauri) if the browser cannot spawn processes.
+- **Persistence** – lightweight storage for UI preferences, last engine
+  selection, and saved positions.
 
-## Experience Pillars
-- **Clarity** – prioritize readable board states, move histories, and
-  annotations. Surface engine opinions with context (centipawns, mate
-  distances, principal variation) and explain discrepancies across iterations.
-- **Responsiveness** – minimize perceived latency by optimistic UI updates,
-  streaming analysis updates, and caching recent sessions. All critical flows
-  should remain usable on mid-range laptops and tablets.
-- **Trustworthiness** – mirror the engine's structured errors, request IDs, and
-  version metadata so users can trace unexpected behavior and share actionable
-  bug reports.
-- **Extensibility** – keep architecture modular (board, controls, insights) to
-  accommodate future features such as puzzles, coach mode, or cloud save.
+## HTTP Engine Integration
+Configure the base URL at runtime (environment variables or settings panel).
+Every request is JSON over HTTPS. Auth is currently out of scope; plan for API
+keys once introduced.
 
-## Feature Roadmap (Initial Release)
-1. **Session Management**
-   - Create, resume, and destroy sessions via `POST /api/games` and subsequent
-     calls.
-   - Persist the current `game_id` locally (e.g., IndexedDB) so refreshes retain
-     context until the backend resets.
-2. **Interactive Board**
-   - Drag-and-drop and tap-to-move interactions with move validation backed by
-     `GET /api/games/{game_id}/state` and `POST /api/games/{game_id}/move`.
-   - Highlight legal moves, last move, checks, and checkmates using state
-     payload fields.
-3. **Analysis Controls**
-   - Quick actions for depth-limited and time-limited searches calling
-     `POST /api/games/{game_id}/search` with presets (blitz/classical/custom).
-   - Display engine score, mate distance, principal variation, nodes, and
-     selective depth as the search progresses.
-4. **History & Undo**
-   - Scrollable move list with SAN/lan toggles and ability to step back using
-     `POST /api/games/{game_id}/undo` and corresponding state refreshes.
-5. **Position Tools**
-   - FEN import/export dialog, board reset, and quick-start templates. Validate
-     FEN strings client-side before calling `POST /api/games/{game_id}/position`.
-6. **Insights Panel**
-   - Collapsible telemetry section exposing TT stats, iterative deepening
-     breakdown (`iters`), and hash usage (`hashfull`) for advanced users.
-7. **Perft Playground (Developer Mode)**
-   - Hidden or authenticated screen invoking `POST /api/perft` for debugging
-     move generation discrepancies.
+### Session Lifecycle Endpoints
+| Method | Path | Purpose | Request Body | Key Response Fields |
+| --- | --- | --- | --- | --- |
+| `POST` | `/api/games` | Create a new engine-backed game session. | _None_ | `game_id`, `fen` (start position). |
+| `GET` | `/api/games/{game_id}/state` | Fetch current board state. | _None_ | `fen`, `turn`, `legal_moves` (UCI), `move_history`, `status` (`in_progress`, `checkmate`, `stalemate`, `draw`), `last_move`, optional clocks. |
+| `POST` | `/api/games/{game_id}/move` | Submit a UCI move. | `{ "move": "e2e4" }` | Updated state payload; `error` when illegal. |
+| `POST` | `/api/games/{game_id}/undo` | Revert the last ply. | _None_ | Updated state payload. |
+| `POST` | `/api/games/{game_id}/position` | Load an arbitrary position. | `{ "fen": "FEN string" }` | Updated state payload or `error` for invalid FEN. |
 
-## Future Enhancements (Post-MVP)
-- Cloud-backed session persistence keyed by user identity to survive backend
-  restarts.
-- Collaborative analysis mode with shared cursors and commentary.
-- Opening explorer and endgame tablebase integrations.
-- Mobile-first layout optimizations and offline-first caching strategies.
-- Accessibility improvements such as screen-reader move announcements and
-  high-contrast themes.
+### Search Endpoint
+`POST /api/games/{game_id}/search`
+- **Request body**: any combination of `depth` (plies), `movetime_ms` (time per
+  search), `tt_max_entries` (transposition table size hint).
+- **Response fields**: `best_move`, `ponder`, `score` (`{ "cp": int }` or
+  `{ "mate": plies }`), `pv` (array of UCI moves), `nodes`, `qnodes`,
+  `seldepth`, `time_ms`, `iters` (array of per-depth stats), `tt_*` telemetry
+  (`hits`, `stores`, `replacements`, `size`, `hashfull`). Surface nulls
+  gracefully when searches abort early.
 
-## Architectural Principles
-- **Single Page Application** built with a modern framework (React, Svelte, or
-  Vue) using TypeScript for type safety against the OpenAPI schema.
-- **State Management** via a predictable store (Redux Toolkit, Zustand, Pinia)
-  with normalized entities for games, analysis runs, and UI panels.
-- **API Layer** generated from `docs/openapi.yaml` to ensure parity with the
-  backend; include clients for games, search, and perft namespaces.
-- **Real-Time Feedback** using Server-Sent Events or WebSockets once the engine
-  exposes streaming updates (Plan 5 backlog). For now, poll search endpoints at
-  a cadence aligned with `movetime_ms` or depth iterations.
-- **Testing Strategy** combining unit tests (component and store), contract
-  tests against a mocked API server, and end-to-end scenarios using Playwright
-  or Cypress.
+### Perft Endpoint (Developer Tooling)
+`POST /api/perft`
+- **Request body**: `{ "fen": "...", "depth": int }`.
+- **Response**: `{ "nodes": int }`. Use in an advanced diagnostics screen.
 
-## Error Handling & Observability
-- Surface backend-provided `error.code`, `error.message`, and `request_id` in
-  toast notifications and developer consoles to aid debugging.
-- Gracefully handle `404 game not found` by prompting users to start a new
-  session; offer retries for transient network failures.
-- Instrument telemetry (e.g., OpenTelemetry or custom hooks) to measure request
-  latency, move submission success rates, and search completion rates.
-- Log engine version and build metadata in a diagnostics view to aid support.
+### Error Model & Telemetry
+- Responses include either a `detail` string (FastAPI validation) or a structured
+  `{ "error": { "code": str, "message": str }, "request_id": str }` envelope.
+  Display the message to the user and log the request ID for debugging.
+- Expect `404` when a `game_id` is stale; prompt the user to create a new
+  session. Retry idempotent requests on network failure with exponential backoff.
 
-## UX Guidelines
-- Keep board rendering at 60 FPS using requestAnimationFrame and memoized
-  components; fallback to CSS transitions on low-end devices.
-- Provide visual feedback during long searches (spinners, depth progress bars,
-  estimated remaining time based on `iters`).
-- Offer keyboard shortcuts for navigation (undo, redo, flip board) and ensure
-  all controls have accessible names.
-- Internationalize copy via a translation framework from day one to support
-  multi-lingual deployments.
+## UCI Engine Integration
+Support loading a local engine binary provided by the user. The connector must
+follow the Universal Chess Interface handshake and command set below.
 
-## Collaboration Expectations
-- Maintain shared design tokens (colors, spacing, typography) across web and
-  marketing surfaces to preserve brand alignment.
-- Store reusable assets (SVG pieces, icons) under `packages/ui` or equivalent
-  library to unblock future native clients.
-- Establish CI pipelines enforcing linting, formatting, type checks, and
-  integration tests before deployment.
+### Startup Sequence
+1. Launch the engine process.
+2. Send `uci` and wait for `uciok` while recording declared `option` lines for
+   configuration UI.
+3. Send `isready` and wait for `readyok` before issuing further commands.
+4. Use `setoption name <Name> value <Value>` for any user-selected options.
+5. Call `ucinewgame` when starting a new match.
 
-## Deployment & Ops Considerations
-- Target static hosting (Vercel, Netlify, GitHub Pages) backed by environment
-  variables pointing at the engine API base URL.
-- Support multiple environments (local, staging, production) via configuration
-  files or runtime environment injection.
-- Implement feature flags for experimental analysis options so they can ship
-  dark and be toggled remotely.
-- Document rollback and cache-busting procedures to ensure rapid recovery from
-  faulty releases.
+### Position & Search Commands
+- `position [startpos | fen <FEN>] [moves <move1> <move2> ...]` – set the board.
+- `go` variants to support:
+  - `go movetime <ms>`
+  - `go depth <plies>`
+  - `go wtime <ms> btime <ms> winc <ms> binc <ms>` for clock-based games.
+- `stop` – request the best move immediately.
+- `ponderhit` – resume from ponder mode (optional for MVP).
+- `quit` – terminate the engine when the connector shuts down.
 
-## Dependencies & Integration Contracts
-- Align release cadence with the engine roadmap; monitor changes to
-  `docs/chess-frontend-integration.md` and `docs/openapi.yaml` for contract
-  updates.
-- Coordinate with backend maintainers when introducing long-running requests or
-  higher concurrency loads.
-- Version the generated API client alongside the backend commit hash to trace
-  compatibility.
+### Parsing Responses
+- Handle `bestmove <move> [ponder <move>]` and intermediate `info` lines. Map
+  `info` tokens (`depth`, `seldepth`, `score cp`, `score mate`, `nodes`, `time`,
+  `pv`, `hashfull`, etc.) into the shared analysis panel schema used by the HTTP
+  connector so the UI can reuse components.
 
-## Success Metrics
-- Time-to-first-move under 5 seconds for new visitors on broadband.
-- Search result latency within ±10% of requested `movetime_ms` presets.
-- ≥90% of error dialogs include actionable guidance sourced from backend
-  messages.
-- User satisfaction (post-session survey) averages ≥4/5 on clarity and
-  responsiveness.
+## Match Flow Scenarios
+- **Human vs Human**: maintain board state locally; optionally run analysis in
+  the background using either connector without affecting the move log.
+- **Human vs Engine**: after a human move, submit it via the active connector.
+  When using HTTP, call `/move` then `/search` (if auto-analysis is enabled).
+  For UCI, send `position` + `go` and await `bestmove`.
+- **Engine vs Engine**: instantiate two connectors (any mix of HTTP and UCI) and
+  alternate `go` commands. Record both evaluations for spectators and allow
+  pausing/resuming.
 
-## Open Questions
-- Should streaming analysis be prioritized over deeper synchronous searches in
-  MVP?
-- What authentication model (if any) is required for hosted deployments?
-- How should puzzles and coaching content integrate with engine analysis flows?
-- Do we need offline support beyond graceful network failure handling?
+## Configuration UX
+- Engine selection dialog with two tabs: **Hosted Engine** (base URL input,
+  optional API key) and **Local Engine** (file picker for executable, list of
+  UCI options). Persist choices for quick relaunches.
+- Match setup screen selects players (Human or specific engine connector), time
+  control, starting position/FEN, and optional analysis presets.
 
+## Observability & Quality
+- Log every engine interaction with timestamps, payloads, and outcomes to aid
+  support.
+- Instrument frontend metrics for move latency, engine response time, and error
+  rates.
+- Provide a developer console overlay that surfaces raw engine messages for
+  troubleshooting while keeping the main UI focused on players.
+
+## Delivery Checklist
+- [ ] Implement responsive board supporting drag/tap/keyboard.
+- [ ] Complete HTTP connector covering all endpoints above with retries and
+      error handling.
+- [ ] Complete UCI connector supporting the command set above with configurable
+      options.
+- [ ] Build configuration UI for selecting match type and engines.
+- [ ] Render analysis telemetry consistently across connectors.
+- [ ] Add Playwright/Cypress flows for each match scenario.
